@@ -1,0 +1,2323 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AURA CHRONICLES — 運命のRNG</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Orbitron:wght@400;700;900&family=Noto+Sans+JP:wght@300;400;700;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --gold:#ffd700;--silver:#c0c0c0;--cyan:#00f5ff;
+  --pink:#ff69b4;--red:#ff2244;--green:#00ff88;
+  --dark:#04040f;--panel:rgba(8,8,24,0.88);
+  --font-ja:'Noto Sans JP',sans-serif;
+  --font-en:'Rajdhani',sans-serif;
+  --font-title:'Cinzel Decorative',serif;
+  --font-num:'Orbitron',sans-serif;
+}
+body{
+  font-family:var(--font-ja);
+  background:var(--dark);color:#fff;
+  min-height:100vh;overflow-x:hidden;overflow-y:hidden;
+}
+canvas#bg-canvas{position:fixed;inset:0;width:100%;height:100%;z-index:0;}
+#game-root{position:relative;z-index:1;display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+
+/* ── TOP BAR ── */
+#top-bar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 16px;
+  background:rgba(0,0,0,0.75);
+  border-bottom:1px solid rgba(255,215,0,0.25);
+  backdrop-filter:blur(12px);flex-shrink:0;
+  gap:10px;
+}
+#logo{
+  font-family:var(--font-title);font-size:14px;font-weight:900;
+  background:linear-gradient(135deg,#ffd700,#ff8c00,#ffd700);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;letter-spacing:2px;white-space:nowrap;
+}
+#top-stats{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.stat-chip{
+  display:flex;align-items:center;gap:5px;
+  background:rgba(255,255,255,0.05);
+  border:1px solid rgba(255,255,255,0.1);
+  border-radius:20px;padding:3px 10px;
+  font-size:12px;font-weight:600;
+}
+#luck-val{color:#ffd700;font-family:var(--font-num);}
+#token-val{color:#00f5ff;font-family:var(--font-num);}
+#equipped-aura-chip{font-size:11px;padding:3px 9px;border-radius:20px;background:rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.15);}
+
+/* ── GUIDE BANNER ── */
+#guide-banner{
+  display:flex;align-items:center;justify-content:center;gap:20px;
+  padding:6px 16px;
+  background:rgba(0,0,0,0.5);
+  border-bottom:1px solid rgba(255,255,255,0.05);
+  flex-shrink:0;font-size:11px;color:rgba(255,255,255,0.45);
+  flex-wrap:wrap;gap:8px;
+}
+.guide-step{
+  display:flex;align-items:center;gap:5px;
+}
+.guide-step-num{
+  width:18px;height:18px;border-radius:50%;
+  background:rgba(255,215,0,0.2);border:1px solid rgba(255,215,0,0.4);
+  display:flex;align-items:center;justify-content:center;
+  font-size:9px;color:#ffd700;font-weight:700;flex-shrink:0;
+  font-family:var(--font-num);
+}
+.guide-arrow{color:rgba(255,215,0,0.3);font-size:10px;}
+
+/* ── MAIN AREA ── */
+#main-area{display:flex;flex:1;overflow:hidden;}
+
+/* ── SIDEBAR ── */
+#sidebar{
+  width:70px;flex-shrink:0;
+  background:rgba(0,0,0,0.65);
+  border-right:1px solid rgba(255,215,0,0.12);
+  display:flex;flex-direction:column;align-items:center;
+  padding:12px 0;gap:6px;overflow:hidden;
+}
+.nav-btn{
+  width:54px;height:54px;border-radius:12px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  cursor:pointer;gap:3px;
+  border:1px solid transparent;
+  transition:all .2s;
+  background:rgba(255,255,255,0.02);
+  position:relative;
+}
+.nav-btn .nav-icon{font-size:20px;}
+.nav-btn .nav-label{font-size:8px;font-family:var(--font-ja);color:rgba(255,255,255,0.45);letter-spacing:0;}
+.nav-btn:hover{background:rgba(255,255,255,0.07);border-color:rgba(255,215,0,0.25);}
+.nav-btn.active{background:rgba(255,215,0,0.1);border-color:rgba(255,215,0,0.45);}
+.nav-btn.active .nav-label{color:#ffd700;}
+
+/* ── CONTENT PANELS ── */
+#content{flex:1;overflow:hidden;position:relative;}
+.panel{position:absolute;inset:0;display:none;overflow-y:auto;overflow-x:hidden;padding:16px;}
+.panel.active{display:block;}
+.panel::-webkit-scrollbar{width:4px;}
+.panel::-webkit-scrollbar-track{background:transparent;}
+.panel::-webkit-scrollbar-thumb{background:rgba(255,215,0,0.25);border-radius:2px;}
+.panel-header{
+  font-family:var(--font-title);font-size:16px;color:#ffd700;
+  margin-bottom:14px;letter-spacing:2px;
+}
+
+/* ── GACHA PANEL ── */
+#gacha-center{display:flex;flex-direction:column;align-items:center;min-height:100%;padding:10px 0;}
+
+/* Orb */
+#gacha-orb-area{width:200px;height:200px;position:relative;margin:0 auto 16px;cursor:pointer;}
+#gacha-orb{
+  width:200px;height:200px;border-radius:50%;
+  background:radial-gradient(circle at 35% 35%,rgba(255,255,255,0.45),rgba(100,0,220,0.85) 60%,rgba(0,0,60,0.95));
+  box-shadow:0 0 60px rgba(150,0,255,0.6),0 0 120px rgba(100,0,200,0.3),inset 0 0 40px rgba(255,255,255,0.12);
+  animation:orbFloat 3s ease-in-out infinite;
+  transition:transform .15s,box-shadow .15s;
+  position:relative;z-index:1;
+}
+#gacha-orb:hover{transform:scale(1.06);box-shadow:0 0 80px rgba(180,0,255,0.8),0 0 160px rgba(120,0,230,0.4),inset 0 0 40px rgba(255,255,255,0.18);}
+#gacha-orb::after{
+  content:'';position:absolute;width:55px;height:18px;
+  background:rgba(255,255,255,0.3);border-radius:50%;
+  top:38px;left:46px;filter:blur(7px);transform:rotate(-30deg);
+}
+#orb-click-hint{
+  position:absolute;bottom:-24px;left:50%;transform:translateX(-50%);
+  font-size:10px;color:rgba(255,255,255,0.35);white-space:nowrap;
+  font-family:var(--font-ja);
+  animation:hintPulse 2s ease-in-out infinite;
+}
+@keyframes hintPulse{0%,100%{opacity:.35;}50%{opacity:.7;}}
+@keyframes orbFloat{0%,100%{transform:translateY(0);}50%{transform:translateY(-10px);}}
+.orb-ring{position:absolute;border-radius:50%;border:1px solid;animation:ringRotate linear infinite;}
+.ring1{width:242px;height:242px;top:-21px;left:-21px;border-color:rgba(150,0,255,0.35);animation-duration:8s;}
+.ring2{width:270px;height:270px;top:-35px;left:-35px;border-color:rgba(0,100,255,0.25);animation-duration:13s;animation-direction:reverse;}
+.ring3{width:300px;height:300px;top:-50px;left:-50px;border-color:rgba(255,0,100,0.18);animation-duration:20s;}
+@keyframes ringRotate{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
+
+/* Gacha buttons */
+#gacha-cost-info{font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:10px;text-align:center;}
+#gacha-buttons{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;justify-content:center;}
+.gacha-btn{
+  font-family:var(--font-num);font-size:10px;font-weight:700;letter-spacing:1px;
+  padding:9px 18px;border-radius:8px;cursor:pointer;border:1px solid;transition:all .2s;
+}
+.gacha-btn-1{background:rgba(0,245,255,0.08);border-color:rgba(0,245,255,0.4);color:#00f5ff;}
+.gacha-btn-1:hover{background:rgba(0,245,255,0.2);box-shadow:0 0 18px rgba(0,245,255,0.3);}
+.gacha-btn-10{background:rgba(255,215,0,0.08);border-color:rgba(255,215,0,0.4);color:#ffd700;}
+.gacha-btn-10:hover{background:rgba(255,215,0,0.2);box-shadow:0 0 18px rgba(255,215,0,0.3);}
+.gacha-btn-lucky{background:rgba(255,0,100,0.08);border-color:rgba(255,0,100,0.4);color:#ff69b4;font-size:9px;}
+.gacha-btn-lucky:hover{background:rgba(255,0,100,0.2);box-shadow:0 0 18px rgba(255,100,150,0.3);}
+
+/* Luck gear */
+#luck-gear-section{width:100%;max-width:480px;margin-bottom:14px;}
+#luck-gear-section h3{
+  font-family:var(--font-num);font-size:10px;color:rgba(255,215,0,0.65);
+  letter-spacing:2px;margin-bottom:8px;text-align:center;
+}
+#luck-gear-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;}
+.luck-gear-item{
+  background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.09);
+  border-radius:8px;padding:7px;text-align:center;cursor:pointer;transition:all .2s;
+}
+.luck-gear-item:hover{background:rgba(255,215,0,0.07);border-color:rgba(255,215,0,0.3);}
+.luck-gear-item.equipped-gear{background:rgba(255,215,0,0.11);border-color:rgba(255,215,0,0.5);}
+.gear-icon{font-size:20px;display:block;margin-bottom:2px;}
+.gear-name{font-size:9px;color:rgba(255,255,255,0.65);display:block;}
+.gear-luck{font-size:10px;color:#ffd700;font-weight:700;}
+.gear-cost{font-size:9px;color:#00f5ff;}
+
+/* Rate table */
+#rate-table{width:100%;max-width:480px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:10px;}
+#rate-table h3{font-family:var(--font-num);font-size:10px;color:rgba(255,255,255,0.35);letter-spacing:2px;margin-bottom:7px;}
+.rate-row{display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:11px;}
+.rate-row:last-child{border:none;}
+.rate-name{font-weight:700;font-family:var(--font-ja);}
+.rate-pct{color:rgba(255,255,255,0.45);font-size:10px;font-family:var(--font-num);}
+
+/* Pity indicator */
+#pity-bar-wrap{width:100%;max-width:480px;margin-bottom:10px;}
+#pity-bar-wrap p{font-size:10px;color:rgba(255,255,255,0.4);margin-bottom:4px;text-align:center;}
+#pity-bar-bg{height:4px;background:rgba(255,255,255,0.07);border-radius:2px;overflow:hidden;}
+#pity-bar-fill{height:100%;background:linear-gradient(90deg,#cc44ff,#ff2266);border-radius:2px;transition:width .5s;}
+
+/* ── GACHA ANIMATION OVERLAY ── */
+#gacha-anim-overlay{
+  position:fixed;inset:0;z-index:200;
+  display:none;align-items:center;justify-content:center;
+  flex-direction:column;pointer-events:none;
+}
+#gacha-anim-overlay.show{display:flex;pointer-events:all;}
+#gacha-flash-layer{position:absolute;inset:0;opacity:0;transition:opacity .08s;}
+#gacha-beam-canvas{position:absolute;inset:0;width:100%;height:100%;}
+
+/* Spinning aura during roll */
+#spin-aura{
+  position:relative;z-index:5;
+  width:160px;height:160px;border-radius:50%;
+  display:none;
+  animation:spinAura 0.5s linear infinite;
+}
+@keyframes spinAura{from{transform:rotate(0deg) scale(1);}50%{transform:rotate(180deg) scale(1.1);}to{transform:rotate(360deg) scale(1);}}
+
+#rarity-reveal-text{
+  position:relative;z-index:5;
+  font-family:var(--font-title);font-size:36px;font-weight:900;
+  display:none;text-align:center;
+  text-shadow:0 0 40px currentColor,0 0 80px currentColor;
+  animation:rarityReveal 0.8s cubic-bezier(0.175,0.885,0.32,1.275) forwards;
+}
+@keyframes rarityReveal{
+  0%{transform:scale(0) rotate(-15deg);opacity:0;}
+  60%{transform:scale(1.25) rotate(3deg);}
+  80%{transform:scale(0.95) rotate(-1deg);}
+  100%{transform:scale(1) rotate(0deg);opacity:1;}
+}
+
+#lightning-ring{
+  position:absolute;z-index:4;
+  width:300px;height:300px;border-radius:50%;
+  border:3px solid;display:none;
+  animation:lightningExpand 0.6s ease-out forwards;
+}
+@keyframes lightningExpand{
+  0%{transform:scale(0.3);opacity:1;}
+  100%{transform:scale(2.5);opacity:0;}
+}
+
+/* ── RESULT OVERLAY ── */
+#result-overlay{
+  position:fixed;inset:0;z-index:150;
+  display:none;align-items:center;justify-content:center;flex-direction:column;
+}
+#result-overlay.show{display:flex;}
+#result-bg{position:absolute;inset:0;background:rgba(0,0,0,0.9);backdrop-filter:blur(10px);}
+#result-bg-particles{position:absolute;inset:0;pointer-events:none;}
+#result-box{
+  position:relative;z-index:1;text-align:center;padding:36px;
+  max-width:480px;width:90%;
+  animation:resultSlide 0.5s cubic-bezier(0.175,0.885,0.32,1.275) forwards;
+}
+@keyframes resultSlide{
+  from{transform:translateY(40px) scale(0.9);opacity:0;}
+  to{transform:translateY(0) scale(1);opacity:1;}
+}
+#result-rarity-label{
+  font-family:var(--font-num);font-size:11px;letter-spacing:5px;margin-bottom:6px;opacity:.8;
+}
+#result-name{font-family:var(--font-title);font-size:28px;font-weight:900;line-height:1.2;margin-bottom:6px;}
+#result-desc{font-size:13px;color:rgba(255,255,255,0.55);margin-bottom:18px;line-height:1.6;}
+#result-stats-box{display:flex;gap:14px;justify-content:center;margin-bottom:22px;}
+.result-stat{background:rgba(255,255,255,0.05);border-radius:8px;padding:8px 14px;text-align:center;}
+.result-stat-label{font-size:9px;color:rgba(255,255,255,0.4);letter-spacing:2px;font-family:var(--font-num);}
+.result-stat-val{font-size:20px;font-weight:700;font-family:var(--font-num);}
+#result-aura-visual{width:130px;height:130px;border-radius:50%;margin:0 auto 18px;position:relative;}
+.result-btn-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;}
+.result-btn{
+  font-family:var(--font-ja);font-size:13px;font-weight:700;
+  padding:11px 28px;border-radius:8px;cursor:pointer;transition:all .2s;
+}
+#result-equip-btn{border:1px solid rgba(255,215,0,0.5);background:rgba(255,215,0,0.12);color:#ffd700;}
+#result-equip-btn:hover{background:rgba(255,215,0,0.28);}
+#result-close-btn{border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.7);}
+#result-close-btn:hover{background:rgba(255,255,255,0.12);}
+
+/* ── MULTI RESULT OVERLAY ── */
+#multi-result-overlay{
+  position:fixed;inset:0;z-index:150;
+  display:none;align-items:center;justify-content:center;flex-direction:column;
+}
+#multi-result-overlay.show{display:flex;}
+#multi-result-bg{position:absolute;inset:0;background:rgba(0,0,0,0.94);backdrop-filter:blur(10px);}
+#multi-result-box{
+  position:relative;z-index:1;width:92%;max-width:680px;
+  padding:24px 16px;text-align:center;
+  animation:resultSlide 0.4s ease forwards;
+}
+#multi-result-title{font-family:var(--font-title);font-size:18px;color:#ffd700;margin-bottom:16px;letter-spacing:2px;}
+#multi-result-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-bottom:16px;}
+.multi-card{
+  border-radius:10px;padding:9px 5px;
+  border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.03);
+  text-align:center;cursor:pointer;transition:transform .15s;
+  animation:cardFlip 0.4s ease backwards;
+}
+.multi-card:hover{transform:scale(1.06) translateY(-2px);}
+@keyframes cardFlip{from{transform:rotateY(90deg);opacity:0;}to{transform:rotateY(0);opacity:1;}}
+.multi-aura-icon{width:48px;height:48px;border-radius:50%;margin:0 auto 5px;}
+.multi-card-name{font-size:8px;font-weight:700;line-height:1.2;font-family:var(--font-ja);}
+.multi-card-rarity{font-size:7px;opacity:.55;letter-spacing:1px;font-family:var(--font-num);}
+#multi-close-btn{
+  font-family:var(--font-ja);font-size:13px;font-weight:700;
+  padding:11px 36px;border-radius:8px;cursor:pointer;
+  border:1px solid rgba(255,215,0,0.4);background:rgba(255,215,0,0.1);color:#ffd700;transition:all .2s;
+}
+#multi-close-btn:hover{background:rgba(255,215,0,0.24);}
+
+/* ── INVENTORY PANEL ── */
+#inventory-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(115px,1fr));gap:10px;}
+.inv-card{
+  border-radius:10px;padding:11px 7px;
+  border:1px solid rgba(255,255,255,0.07);background:rgba(255,255,255,0.02);
+  text-align:center;cursor:pointer;transition:all .2s;position:relative;
+}
+.inv-card:hover{transform:translateY(-3px);border-color:rgba(255,255,255,0.18);}
+.inv-card.equipped-card{border-color:rgba(255,215,0,0.55);background:rgba(255,215,0,0.07);}
+.inv-aura-icon{width:58px;height:58px;border-radius:50%;margin:0 auto 7px;}
+.inv-name{font-size:10px;font-weight:700;line-height:1.2;margin-bottom:2px;font-family:var(--font-ja);}
+.inv-rarity{font-size:8px;opacity:.45;letter-spacing:1px;margin-bottom:2px;font-family:var(--font-num);}
+.inv-atk{font-size:10px;color:#ff8c00;}
+.inv-count{position:absolute;top:6px;right:7px;font-size:9px;color:rgba(255,255,255,0.35);}
+.equipped-badge{
+  position:absolute;top:5px;left:5px;font-size:7px;
+  background:rgba(255,215,0,0.85);color:#000;font-weight:700;
+  border-radius:3px;padding:1px 4px;letter-spacing:1px;
+}
+#inv-empty{
+  grid-column:1/-1;text-align:center;padding:60px;
+  color:rgba(255,255,255,0.25);font-family:var(--font-ja);font-size:13px;
+}
+
+/* ── DUNGEON PANEL ── */
+#dungeon-list{display:flex;flex-direction:column;gap:8px;margin-bottom:14px;}
+.dungeon-card{
+  border-radius:10px;padding:13px;
+  border:1px solid rgba(255,255,255,0.07);background:rgba(255,255,255,0.02);
+  cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:11px;
+}
+.dungeon-card:hover{border-color:rgba(255,100,100,0.35);background:rgba(255,50,50,0.04);}
+.dungeon-card.locked{opacity:.35;cursor:not-allowed;pointer-events:none;}
+.dungeon-icon{font-size:26px;flex-shrink:0;}
+.dungeon-info h4{font-size:13px;font-weight:700;margin-bottom:2px;}
+.dungeon-info p{font-size:10px;color:rgba(255,255,255,0.45);}
+.dungeon-req{font-size:10px;color:#ff8c00;margin-top:2px;}
+.dungeon-rewards{margin-left:auto;text-align:right;flex-shrink:0;}
+.dungeon-reward-tokens{font-size:14px;color:#00f5ff;font-weight:700;font-family:var(--font-num);}
+.dungeon-reward-label{font-size:8px;color:rgba(255,255,255,0.35);letter-spacing:1px;}
+.dungeon-start-hint{
+  text-align:center;padding:16px;color:rgba(255,255,255,0.3);
+  font-size:12px;font-family:var(--font-ja);
+}
+
+/* ── BATTLE FULL SCREEN ── */
+#battle-overlay{
+  position:fixed;inset:0;z-index:120;
+  display:none;flex-direction:column;
+  background:rgba(0,0,0,0.98);
+}
+#battle-overlay.show{display:flex;}
+
+/* Battle background canvas */
+#battle-bg-canvas{position:absolute;inset:0;width:100%;height:100%;z-index:0;}
+
+#battle-top-bar{
+  position:relative;z-index:1;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 20px;
+  background:rgba(0,0,0,0.7);border-bottom:1px solid rgba(255,255,255,0.08);
+}
+#battle-dungeon-name{
+  font-family:var(--font-title);font-size:16px;color:#ff4466;letter-spacing:2px;
+}
+#battle-flee-btn{
+  font-family:var(--font-ja);font-size:12px;font-weight:700;
+  padding:7px 18px;border-radius:7px;cursor:pointer;
+  border:1px solid rgba(255,255,255,0.25);background:rgba(255,255,255,0.06);
+  color:rgba(255,255,255,0.6);transition:all .2s;
+}
+#battle-flee-btn:hover{background:rgba(255,255,255,0.12);}
+
+#battle-arena{
+  position:relative;z-index:1;
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:24px;padding:20px;
+}
+
+/* Character areas */
+.battle-char-area{
+  width:100%;max-width:500px;
+  background:rgba(255,255,255,0.04);border-radius:14px;
+  padding:16px 20px;border:1px solid rgba(255,255,255,0.08);
+  display:flex;align-items:center;gap:16px;
+}
+.battle-char-emoji{
+  font-size:52px;
+  animation:battleIdle 2s ease-in-out infinite;
+  flex-shrink:0;
+}
+.battle-char-emoji.shake{animation:battleShake 0.4s ease;}
+@keyframes battleIdle{0%,100%{transform:translateY(0);}50%{transform:translateY(-4px);}}
+@keyframes battleShake{0%,100%{transform:translateX(0);}25%{transform:translateX(-8px);}75%{transform:translateX(8px);}}
+.battle-char-right{flex:1;}
+.battle-char-name-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.battle-char-label{font-size:14px;font-weight:700;}
+.battle-char-hp-num{font-size:12px;color:rgba(255,255,255,0.5);font-family:var(--font-num);}
+.hp-bar-bg{height:10px;background:rgba(255,255,255,0.08);border-radius:5px;overflow:hidden;margin-bottom:4px;}
+.hp-bar-fill{height:100%;border-radius:5px;transition:width .4s ease;}
+.player-hp-fill{background:linear-gradient(90deg,#00ff88,#00cc66);}
+.enemy-hp-fill{background:linear-gradient(90deg,#ff4444,#ff8800);}
+.battle-status-row{font-size:10px;color:rgba(255,255,255,0.35);font-family:var(--font-num);}
+
+/* VS label */
+#battle-vs-label{
+  font-family:var(--font-title);font-size:24px;color:rgba(255,255,255,0.15);letter-spacing:4px;
+  position:relative;z-index:1;
+}
+
+/* Battle controls */
+#battle-controls-area{
+  position:relative;z-index:1;
+  padding:16px 20px 20px;
+  background:rgba(0,0,0,0.7);border-top:1px solid rgba(255,255,255,0.07);
+  display:flex;flex-direction:column;gap:10px;align-items:center;
+}
+#battle-log{
+  width:100%;max-width:500px;max-height:80px;overflow-y:auto;
+  font-size:11px;line-height:1.7;text-align:center;
+  font-family:var(--font-ja);
+}
+#battle-log::-webkit-scrollbar{width:3px;}
+#battle-log::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.15);}
+.log-player{color:#00ff88;}
+.log-enemy{color:#ff6666;}
+.log-event{color:#ffd700;}
+.log-crit{color:#ff8c00;font-weight:700;}
+#battle-btn-attack{
+  font-family:var(--font-ja);font-size:16px;font-weight:900;
+  padding:14px 60px;border-radius:10px;cursor:pointer;
+  border:2px solid rgba(255,68,68,0.5);
+  background:rgba(255,40,40,0.15);color:#ff4444;
+  transition:all .2s;letter-spacing:2px;
+}
+#battle-btn-attack:hover{background:rgba(255,40,40,0.3);box-shadow:0 0 20px rgba(255,40,40,0.4);}
+#battle-btn-attack:disabled{opacity:.4;cursor:not-allowed;}
+
+/* Damage number popup */
+.dmg-popup{
+  position:fixed;
+  font-family:var(--font-num);font-weight:900;
+  pointer-events:none;z-index:300;
+  animation:dmgFloat 1.2s ease-out forwards;
+}
+@keyframes dmgFloat{
+  0%{transform:translateY(0) scale(1);opacity:1;}
+  100%{transform:translateY(-80px) scale(0.5);opacity:0;}
+}
+
+/* ── SHOP PANEL ── */
+#shop-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:11px;}
+.shop-section-title{
+  font-family:var(--font-title);font-size:15px;color:#ffd700;
+  margin-bottom:12px;letter-spacing:2px;
+}
+.shop-item{
+  border-radius:10px;padding:13px;
+  border:1px solid rgba(255,255,255,0.07);background:rgba(255,255,255,0.02);
+  text-align:center;cursor:pointer;transition:all .2s;
+}
+.shop-item:hover{border-color:rgba(0,245,255,0.35);background:rgba(0,245,255,0.04);}
+.shop-item-icon{font-size:30px;margin-bottom:7px;display:block;}
+.shop-item-name{font-size:12px;font-weight:700;margin-bottom:3px;font-family:var(--font-ja);}
+.shop-item-desc{font-size:9px;color:rgba(255,255,255,0.45);margin-bottom:7px;line-height:1.4;}
+.shop-item-cost{font-size:12px;font-weight:700;color:#00f5ff;font-family:var(--font-num);}
+.shop-item-effect{font-size:10px;color:#ffd700;font-family:var(--font-num);}
+
+/* ── PARTICLES & MISC ── */
+#particles-layer{position:fixed;inset:0;z-index:50;pointer-events:none;overflow:hidden;}
+.particle{position:absolute;border-radius:50%;pointer-events:none;animation:particleFly linear forwards;}
+@keyframes particleFly{
+  0%{transform:translateY(0) scale(1) rotate(0deg);opacity:1;}
+  100%{transform:translateY(-280px) scale(0) rotate(360deg);opacity:0;}
+}
+#toast{
+  position:fixed;bottom:22px;right:22px;z-index:400;
+  background:rgba(8,8,24,0.97);border:1px solid rgba(255,215,0,0.35);
+  border-radius:8px;padding:9px 15px;font-size:12px;font-family:var(--font-ja);
+  transform:translateY(16px);opacity:0;transition:all .3s;pointer-events:none;max-width:250px;
+}
+#toast.show{transform:translateY(0);opacity:1;}
+
+/* HELP PANEL */
+@keyframes helpFadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+/* STATS PANEL placeholder */
+#panel-stats{}
+
+/* responsive */
+@media(max-width:600px){
+  #multi-result-grid{grid-template-columns:repeat(3,1fr);}
+  #result-name{font-size:22px;}
+}
+</style>
+</head>
+<body>
+<canvas id="bg-canvas"></canvas>
+
+<!-- CONFIRM MODAL -->
+<div id="confirm-modal" style="display:none;position:fixed;inset:0;z-index:500;align-items:center;justify-content:center;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);">
+  <div style="background:rgba(8,8,24,0.98);border:1px solid rgba(255,68,68,0.35);border-radius:14px;padding:28px 32px;max-width:340px;width:90%;text-align:center;box-shadow:0 0 40px rgba(255,50,50,0.15);">
+    <div style="font-size:30px;margin-bottom:12px;">⚠️</div>
+    <div id="confirm-modal-msg" style="font-size:13px;color:rgba(255,255,255,0.8);line-height:1.8;margin-bottom:22px;font-family:'Noto Sans JP',sans-serif;white-space:pre-line;"></div>
+    <div style="display:flex;gap:10px;justify-content:center;">
+      <button id="confirm-modal-ok"
+        style="font-family:'Orbitron',sans-serif;font-size:11px;padding:9px 24px;border-radius:8px;cursor:pointer;border:1px solid rgba(255,68,68,0.5);background:rgba(255,40,40,0.15);color:#ff4444;transition:all .2s;"
+        onmouseover="this.style.background='rgba(255,40,40,0.3)'" onmouseout="this.style.background='rgba(255,40,40,0.15)'">
+        実行する
+      </button>
+      <button id="confirm-modal-cancel"
+        style="font-family:'Orbitron',sans-serif;font-size:11px;padding:9px 24px;border-radius:8px;cursor:pointer;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.6);transition:all .2s;"
+        onmouseover="this.style.background='rgba(255,255,255,0.12)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
+        キャンセル
+      </button>
+    </div>
+  </div>
+</div>
+<div id="particles-layer"></div>
+<div id="toast"></div>
+
+<!-- GACHA ANIM OVERLAY -->
+<div id="gacha-anim-overlay">
+  <canvas id="gacha-beam-canvas"></canvas>
+  <div id="gacha-flash-layer"></div>
+  <div id="spin-aura"></div>
+  <div id="lightning-ring"></div>
+  <div id="rarity-reveal-text"></div>
+</div>
+
+<!-- SINGLE RESULT OVERLAY -->
+<div id="result-overlay">
+  <div id="result-bg" onclick="closeResult()"></div>
+  <div id="result-bg-particles"></div>
+  <div id="result-box">
+    <div id="result-rarity-label"></div>
+    <div id="result-aura-visual"></div>
+    <div id="result-name"></div>
+    <div id="result-desc"></div>
+    <div id="result-stats-box">
+      <div class="result-stat">
+        <div class="result-stat-label">ATK</div>
+        <div class="result-stat-val" id="result-atk"></div>
+      </div>
+      <div class="result-stat">
+        <div class="result-stat-label">RARITY</div>
+        <div class="result-stat-val" id="result-rarity-num"></div>
+      </div>
+    </div>
+    <div class="result-btn-row">
+      <button class="result-btn" id="result-equip-btn" onclick="equipResultAura()">✦ 装備する</button>
+      <button class="result-btn" id="result-close-btn" onclick="closeResult()">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<!-- MULTI RESULT OVERLAY -->
+<div id="multi-result-overlay">
+  <div id="multi-result-bg" onclick="closeMultiResult()"></div>
+  <div id="multi-result-box">
+    <div id="multi-result-title">✦ 召喚結果 ✦</div>
+    <div id="multi-result-grid"></div>
+    <button id="multi-close-btn" onclick="closeMultiResult()">閉じる</button>
+  </div>
+</div>
+
+<!-- BATTLE FULL SCREEN OVERLAY -->
+<div id="battle-overlay">
+  <canvas id="battle-bg-canvas"></canvas>
+  <div id="battle-top-bar">
+    <div id="battle-dungeon-name">⚔ バトル</div>
+    <button id="battle-flee-btn" onclick="doflee()">↩ 逃げる</button>
+  </div>
+  <div id="battle-arena">
+    <!-- Player -->
+    <div class="battle-char-area" id="battle-player-area">
+      <div class="battle-char-emoji" id="battle-player-icon">🧙</div>
+      <div class="battle-char-right">
+        <div class="battle-char-name-row">
+          <div class="battle-char-label" id="battle-player-name">あなた</div>
+          <div class="battle-char-hp-num" id="battle-player-hp-num">100/100</div>
+        </div>
+        <div class="hp-bar-bg"><div class="hp-bar-fill player-hp-fill" id="battle-player-hp-bar" style="width:100%"></div></div>
+        <div class="battle-status-row" id="battle-player-atk-row">ATK 0</div>
+      </div>
+    </div>
+    <div id="battle-vs-label">VS</div>
+    <!-- Enemy -->
+    <div class="battle-char-area" id="battle-enemy-area">
+      <div class="battle-char-emoji" id="battle-enemy-icon">👹</div>
+      <div class="battle-char-right">
+        <div class="battle-char-name-row">
+          <div class="battle-char-label" id="battle-enemy-name">敵</div>
+          <div class="battle-char-hp-num" id="battle-enemy-hp-num">100/100</div>
+        </div>
+        <div class="hp-bar-bg"><div class="hp-bar-fill enemy-hp-fill" id="battle-enemy-hp-bar" style="width:100%"></div></div>
+        <div class="battle-status-row" id="battle-enemy-atk-row">ATK 0</div>
+      </div>
+    </div>
+  </div>
+  <div id="battle-controls-area">
+    <div id="battle-log"></div>
+    <button id="battle-btn-attack" onclick="doAttack()">⚔ 攻撃！</button>
+  </div>
+</div>
+
+<!-- MAIN GAME UI -->
+<div id="game-root">
+  <div id="top-bar">
+    <div id="logo">AURA CHRONICLES</div>
+    <div id="top-stats">
+      <div class="stat-chip">🍀 <span>LUCK</span> <span id="luck-val">1.00x</span></div>
+      <div class="stat-chip">💎 <span>TOKENS</span> <span id="token-val">0</span></div>
+      <div class="stat-chip" id="equipped-aura-chip">⚪ 未装備</div>
+    </div>
+  </div>
+
+  <!-- GUIDE BANNER -->
+  <div id="guide-banner">
+    <div class="guide-step"><div class="guide-step-num">1</div>🔮 オーブを回してオーラを入手</div>
+    <div class="guide-arrow">→</div>
+    <div class="guide-step"><div class="guide-step-num">2</div>👜 インベントリで装備</div>
+    <div class="guide-arrow">→</div>
+    <div class="guide-step"><div class="guide-step-num">3</div>⚔ ダンジョンでバトル → 💎 獲得</div>
+    <div class="guide-arrow">→</div>
+    <div class="guide-step"><div class="guide-step-num">4</div>🏪 ショップでラック強化</div>
+    <button onclick="toggleGuideBanner()" style="margin-left:auto;flex-shrink:0;background:none;border:1px solid rgba(255,255,255,0.15);border-radius:4px;color:rgba(255,255,255,0.35);cursor:pointer;font-size:11px;padding:1px 7px;line-height:1.6;" title="チュートリアルを非表示">✕</button>
+  </div>
+
+  <div id="main-area">
+    <div id="sidebar">
+      <div class="nav-btn active" onclick="switchPanel('gacha')" id="nav-gacha">
+        <span class="nav-icon">🔮</span><span class="nav-label">ガチャ</span>
+      </div>
+      <div class="nav-btn" onclick="switchPanel('inventory')" id="nav-inventory">
+        <span class="nav-icon">👜</span><span class="nav-label">所持品</span>
+      </div>
+      <div class="nav-btn" onclick="switchPanel('dungeon')" id="nav-dungeon">
+        <span class="nav-icon">⚔️</span><span class="nav-label">ダンジョン</span>
+      </div>
+      <div class="nav-btn" onclick="switchPanel('shop')" id="nav-shop">
+        <span class="nav-icon">🏪</span><span class="nav-label">ショップ</span>
+      </div>
+      <div class="nav-btn" onclick="switchPanel('stats')" id="nav-stats">
+        <span class="nav-icon">📊</span><span class="nav-label">実績</span>
+      </div>
+      <div class="nav-btn" onclick="switchPanel('help')" id="nav-help">
+        <span class="nav-icon">📖</span><span class="nav-label">ヘルプ</span>
+      </div>
+      <div style="flex:1;"></div>
+      <div class="nav-btn" onclick="promptAdminPassword()" id="nav-admin" style="border-color:rgba(255,50,50,0.35);background:rgba(255,20,20,0.08);">
+        <span class="nav-icon">🔑</span><span class="nav-label" style="color:rgba(255,100,100,0.7);">管理者</span>
+      </div>
+    </div>
+
+    <div id="content">
+
+      <!-- GACHA PANEL -->
+      <div class="panel active" id="panel-gacha">
+        <div id="gacha-center">
+          <div id="gacha-orb-area" onclick="doGacha(1)">
+            <div class="orb-ring ring1"></div>
+            <div class="orb-ring ring2"></div>
+            <div class="orb-ring ring3"></div>
+            <div id="gacha-orb"></div>
+            <div id="orb-click-hint">クリックで召喚</div>
+          </div>
+          <div id="gacha-cost-info">×1召喚: 50💎 &nbsp;|&nbsp; ×10召喚: 450💎 &nbsp;|&nbsp; ラッキー: 500💎</div>
+          <div id="gacha-buttons">
+            <button class="gacha-btn gacha-btn-1" onclick="doGacha(1)">✦ ×1 召喚</button>
+            <button class="gacha-btn gacha-btn-10" onclick="doGacha(10)">✦ ×10 召喚</button>
+            <button class="gacha-btn gacha-btn-lucky" onclick="doLuckyGacha()">★ ラッキー召喚 ★</button>
+          </div>
+
+          <div id="pity-bar-wrap">
+            <p id="pity-text">天井まで — 回</p>
+            <div id="pity-bar-bg"><div id="pity-bar-fill" style="width:0%"></div></div>
+          </div>
+
+          <div id="luck-gear-section">
+            <h3>⚙ ラックギア（クリックで購入・装備）</h3>
+            <div id="luck-gear-grid"></div>
+          </div>
+
+          <div id="rate-table">
+            <h3>ドロップ率（現在のラック適用済み）</h3>
+            <div id="rate-rows"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- INVENTORY PANEL -->
+      <div class="panel" id="panel-inventory">
+        <div class="panel-header">✦ オーラ所持品</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.35);margin-bottom:12px;">クリックで装備 / 解除。装備中はバトルでATKが上がる。</div>
+        <div id="inventory-grid">
+          <div id="inv-empty">まだオーラがありません。<br>ガチャを回してみよう！</div>
+        </div>
+      </div>
+
+      <!-- DUNGEON PANEL -->
+      <div class="panel" id="panel-dungeon">
+        <div class="panel-header">⚔ ダンジョン</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.35);margin-bottom:12px;">オーラを装備してダンジョンに挑もう。勝利でトークン獲得！</div>
+        <div id="dungeon-list"></div>
+        <div class="dungeon-start-hint" id="dungeon-hint">← ダンジョンを選んでバトル開始</div>
+      </div>
+
+      <!-- SHOP PANEL -->
+      <div class="panel" id="panel-shop">
+        <div class="shop-section-title">✦ ラック強化ショップ</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.35);margin-bottom:12px;">ラックを上げると高レアリティが出やすくなる。ラックギアはガチャ画面で装備できる。</div>
+        <div id="shop-grid"></div>
+      </div>
+
+      <!-- STATS PANEL -->
+      <div class="panel" id="panel-stats">
+      </div>
+
+      <!-- HELP PANEL -->
+      <div class="panel" id="panel-help">
+        <div class="panel-header">📖 ゲームガイド</div>
+        <div id="help-content"></div>
+      </div>
+
+      <!-- ADMIN PANEL -->
+      <div class="panel" id="panel-admin">
+        <!-- ロック画面 -->
+        <div id="admin-lock-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:18px;">
+          <div style="font-size:52px;">🔒</div>
+          <div style="font-family:'Cinzel Decorative',serif;font-size:16px;color:#ff4444;letter-spacing:3px;">管理者認証</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.35);">パスワードを入力してください</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input id="admin-pw-input" type="password" maxlength="10"
+              style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,68,68,0.4);border-radius:8px;padding:9px 14px;color:#fff;font-size:14px;font-family:'Orbitron',sans-serif;letter-spacing:4px;outline:none;width:160px;text-align:center;"
+              placeholder="••••••"
+              onkeydown="if(event.key==='Enter')checkAdminPassword()"
+            />
+            <button onclick="checkAdminPassword()"
+              style="background:rgba(255,50,50,0.12);border:1px solid rgba(255,50,50,0.4);color:#ff4444;border-radius:8px;padding:9px 16px;cursor:pointer;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:13px;transition:all .2s;"
+              onmouseover="this.style.background='rgba(255,50,50,0.25)'" onmouseout="this.style.background='rgba(255,50,50,0.12)'">
+              解錠
+            </button>
+          </div>
+          <div id="admin-pw-error" style="font-size:11px;color:#ff4444;opacity:0;transition:opacity .3s;">パスワードが違います</div>
+        </div>
+        <!-- 解錠後の管理画面 -->
+        <div id="admin-unlocked-screen" style="display:none;">
+          <div class="panel-header" style="color:#ff4444;">🔑 管理者パネル</div>
+          <div style="font-size:11px;color:rgba(255,100,100,0.5);margin-bottom:16px;border:1px solid rgba(255,50,50,0.2);border-radius:6px;padding:8px 12px;background:rgba(255,20,20,0.05);display:flex;justify-content:space-between;align-items:center;">
+            <span>⚠ 管理者専用モード — ゲームバランスに影響します</span>
+            <button onclick="lockAdminPanel()" style="background:none;border:1px solid rgba(255,80,80,0.3);color:rgba(255,100,100,0.6);border-radius:5px;padding:2px 9px;cursor:pointer;font-size:10px;">🔒 ロック</button>
+          </div>
+          <div id="admin-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════
+//  DATA
+// ════════════════════════════════════════════
+
+// 確率設計:
+// ラック1.0(初期) のとき divine以上はほぼ0%
+// ラック500以上でやっとdivine等が現実的に
+// void/omniscientはラック1000+で実用的な確率
+// luck < 200 では各レアリティの重みを正規化して使用
+// luck >= 200 では OVER200_WEIGHTS の固定比率プールに切り替わる
+const OVER200_WEIGHTS = {
+  mythic:     0.50,  // ミシック: 50%
+  divine:     0.30,  // ディバイン: 30%
+  celestial:  0.12,  // セレスティアル: 12%
+  omniscient: 0.05,  // オムニシエント: 5%
+  void:       0.03,  // ヴォイド: 3%
+};
+
+const RARITIES = [
+  // maxProb: ラックがどれだけ高くても重みがこれを超えない上限（通常域のみ使用）
+  {id:'common',    name:'COMMON',     jpName:'コモン',     color:'#aaaaaa', glow:'rgba(170,170,170,',  baseProb:0.5500,    minLuckMult:1,   luckScale:0,    maxProb:0.5500,  atk:5,    tokenMult:1,   bg:null},
+  {id:'uncommon',  name:'UNCOMMON',   jpName:'アンコモン', color:'#44ff88', glow:'rgba(68,255,136,',   baseProb:0.2800,    minLuckMult:1,   luckScale:0,    maxProb:0.2800,  atk:15,   tokenMult:2,   bg:null},
+  {id:'rare',      name:'RARE',       jpName:'レア',       color:'#4488ff', glow:'rgba(68,136,255,',   baseProb:0.1200,    minLuckMult:1,   luckScale:0.5,  maxProb:0.3500,  atk:40,   tokenMult:4,   bg:'rare'},
+  {id:'epic',      name:'EPIC',       jpName:'エピック',   color:'#cc44ff', glow:'rgba(204,68,255,',   baseProb:0.0400,    minLuckMult:1,   luckScale:0.7,  maxProb:0.2500,  atk:90,   tokenMult:8,   bg:'epic'},
+  {id:'legendary', name:'LEGENDARY',  jpName:'レジェンド', color:'#ffaa00', glow:'rgba(255,170,0,',    baseProb:0.0080,    minLuckMult:2,   luckScale:0.85, maxProb:0.1800,  atk:200,  tokenMult:20,  bg:'legendary'},
+  {id:'mythic',    name:'MYTHIC',     jpName:'ミシック',   color:'#ff2266', glow:'rgba(255,34,102,',   baseProb:0.0012,    minLuckMult:5,   luckScale:0.9,  maxProb:0.1200,  atk:500,  tokenMult:50,  bg:'mythic'},
+  {id:'divine',    name:'DIVINE',     jpName:'ディバイン', color:'#00ffff', glow:'rgba(0,255,255,',    baseProb:0.00018,   minLuckMult:30,  luckScale:0.92, maxProb:0.2000,  atk:1200, tokenMult:120, bg:'divine'},
+  {id:'celestial', name:'CELESTIAL',  jpName:'セレスティアル',color:'#ffffff',glow:'rgba(255,255,255,', baseProb:0.000040,  minLuckMult:100, luckScale:0.93, maxProb:0.1200,  atk:3000, tokenMult:300, bg:'celestial'},
+  {id:'omniscient',name:'OMNISCIENT', jpName:'オムニシエント',color:'#ffee00',glow:'rgba(255,238,0,',  baseProb:0.000008,  minLuckMult:300, luckScale:0.95, maxProb:0.0600,  atk:7000, tokenMult:700, bg:'omniscient'},
+  {id:'void',      name:'VOID',       jpName:'ヴォイド',   color:'#aa00ff', glow:'rgba(170,0,255,',    baseProb:0.000040,  minLuckMult:200, luckScale:0.95, maxProb:0.0500,  atk:20000,tokenMult:2000,bg:'void'},
+];
+
+const AURAS = [
+  {id:'a1', rarity:'common',     name:'石のヴェール',      desc:'崩れた大地の鈍いオーラ。',          emoji:'🪨'},
+  {id:'a2', rarity:'common',     name:'灰色の霧',           desc:'足元をさまよう淡い煙。',            emoji:'💨'},
+  {id:'a3', rarity:'uncommon',   name:'翠緑の衝撃',         desc:'生命エネルギーが野生の蔦を渦巻かせる。',emoji:'🌿'},
+  {id:'a4', rarity:'uncommon',   name:'蒼電の閃光',         desc:'青い電撃があなたの周りで踊る。',    emoji:'⚡'},
+  {id:'a5', rarity:'rare',       name:'紅蓮の炎衣',         desc:'激しい深紅の炎がコロナを噴出する。',emoji:'🔥'},
+  {id:'a6', rarity:'rare',       name:'霜の外套',           desc:'致命的な弧を描く氷柱が回転する。',  emoji:'❄️'},
+  {id:'a7', rarity:'epic',       name:'虚空渡りの帳',       desc:'あなたの存在が現実を引き裂く。',    emoji:'🌀'},
+  {id:'a8', rarity:'epic',       name:'嵐の覇者',           desc:'嵐はあなたの意志に従う。',          emoji:'⛈️'},
+  {id:'a9', rarity:'legendary',  name:'ソラリス帝国',       desc:'太陽自体があなたの力に頭を垂れる。',emoji:'☀️'},
+  {id:'a10',rarity:'legendary',  name:'深淵の君主',         desc:'闇はあなたの玉座に跪く。',          emoji:'🌑'},
+  {id:'a11',rarity:'mythic',     name:'ラグナロク昇天',     desc:'あなたは全ての終わりである。',      emoji:'💀'},
+  {id:'a12',rarity:'mythic',     name:'永遠の刃',           desc:'時間があなたの通った跡で砕ける。',  emoji:'⏳'},
+  {id:'a13',rarity:'divine',     name:'天上神輝',           desc:'神々はあなたの輝きの前に震える。',  emoji:'✨'},
+  {id:'a14',rarity:'divine',     name:'永遠の黄金光',       desc:'不滅の黄金の光があなたを包む。',    emoji:'👑'},
+  {id:'a15',rarity:'celestial',  name:'原初の創世',         desc:'あなたは創造の最初の息吹である。',  emoji:'🌌'},
+  {id:'a16',rarity:'celestial',  name:'無限の頂点',         desc:'全ての可能性があなたへと収束する。',emoji:'🔱'},
+  {id:'a17',rarity:'omniscient', name:'アカシック啓示',     desc:'全ての真実があなたの前に明かされる。',emoji:'👁️'},
+  {id:'a18',rarity:'omniscient', name:'宇宙の結節点',       desc:'全次元があなたの心に従う。',        emoji:'🌐'},
+  {id:'a19',rarity:'void',       name:'NIHIL SUPREMUS',    desc:'あなたの前後には何も存在しない。',  emoji:'🕳️'},
+  {id:'a20',rarity:'void',       name:'VOID ABSOLUTE',     desc:'存在の構造があなたのものだ。',      emoji:'💜'},
+];
+
+const LUCK_GEARS = [
+  {id:'g1',name:'幸運のお守り', icon:'🍀',luckBonus:0.2,  cost:100,  desc:'+20% LUCK'},
+  {id:'g2',name:'フォーチュンリング',icon:'💍',luckBonus:0.5,cost:300,desc:'+50% LUCK'},
+  {id:'g3',name:'翡翠の護符',  icon:'🟩',luckBonus:1.0,  cost:800,  desc:'+100% LUCK'},
+  {id:'g4',name:'クリスタルオーブ',icon:'🔮',luckBonus:3.0,cost:2000, desc:'+300% LUCK'},
+  {id:'g5',name:'龍の鱗',      icon:'🐉',luckBonus:8.0,  cost:6000, desc:'+800% LUCK'},
+  {id:'g6',name:'運命の眼',    icon:'👁',luckBonus:20.0, cost:20000,desc:'+2000% LUCK'},
+];
+
+const DUNGEONS = [
+  {id:'d1',name:'ゴブリンの洞窟',  icon:'🏚️',minAtk:0,   enemyHp:100,  enemyAtk:5,   enemyIcon:'👺',enemyName:'ゴブリン首領',  tokenReward:[20,40]},
+  {id:'d2',name:'盗賊の砦',        icon:'🏰',minAtk:30,  enemyHp:280,  enemyAtk:18,  enemyIcon:'⚔️',enemyName:'盗賊団長',      tokenReward:[60,100]},
+  {id:'d3',name:'龍の巣窟',        icon:'🐉',minAtk:80,  enemyHp:700,  enemyAtk:45,  enemyIcon:'🐲',enemyName:'老龍',          tokenReward:[160,260]},
+  {id:'d4',name:'深淵の廃墟',      icon:'🌑',minAtk:200, enemyHp:1800, enemyAtk:120, enemyIcon:'💀',enemyName:'ライム皇帝',    tokenReward:[450,750]},
+  {id:'d5',name:'天界の尖塔',      icon:'🌌',minAtk:600, enemyHp:6000, enemyAtk:350, enemyIcon:'👾',enemyName:'星生まれの神',  tokenReward:[1400,2200]},
+  {id:'d6',name:'虚空の結節点',    icon:'🕳️',minAtk:2000,enemyHp:25000,enemyAtk:1200,enemyIcon:'🌀',enemyName:'虚空の覇者',   tokenReward:[6000,10000]},
+];
+
+// ショップ単価(コスト÷ラック増加量): s1=2000, s2=1600, s3=1400, s4=1250, s5=1000, s6=700 → 大きいほどお得
+const SHOP_ITEMS = [
+  {id:'s1',name:'神秘の賦活',   icon:'✨',desc:'基礎ラックを永続的に+10%増加',  cost:200,  effect:()=>{state.luck=+(state.luck+0.10).toFixed(2);},effectLabel:'+0.10 LUCK'},
+  {id:'s2',name:'星の欠片',     icon:'⭐',desc:'基礎ラックを永続的に+25%増加',  cost:400,  effect:()=>{state.luck=+(state.luck+0.25).toFixed(2);},effectLabel:'+0.25 LUCK'},
+  {id:'s3',name:'魂のプリズム', icon:'🔷',desc:'基礎ラックを永続的に+50%増加',  cost:700,  effect:()=>{state.luck=+(state.luck+0.50).toFixed(2);},effectLabel:'+0.50 LUCK'},
+  {id:'s4',name:'運命の破片',   icon:'💠',desc:'基礎ラックを永続的に+100%増加', cost:1250, effect:()=>{state.luck=+(state.luck+1.00).toFixed(2);},effectLabel:'+1.00 LUCK'},
+  {id:'s5',name:'宇宙の精髄',   icon:'🌠',desc:'基礎ラックを永続的に+200%増加', cost:2000, effect:()=>{state.luck=+(state.luck+2.00).toFixed(2);},effectLabel:'+2.00 LUCK'},
+  {id:'s6',name:'創世の核',     icon:'🌟',desc:'基礎ラックを永続的に+500%増加', cost:3500, effect:()=>{state.luck=+(state.luck+5.00).toFixed(2);},effectLabel:'+5.00 LUCK'},
+  {id:'x1',name:'天井短縮',     icon:'🎯',desc:'天井カウントを10短縮（最低20）', cost:800,  effect:()=>{state.pityGuarantee=Math.max(20,state.pityGuarantee-10);},effectLabel:'天井-10'},
+  {id:'x2',name:'HP強化',       icon:'❤️',desc:'最大HPを永続的に増加',          cost:300,  effect:()=>{state.playerMaxHp=Math.round(state.playerMaxHp*1.5);},effectLabel:'HP ×1.5'},
+  {id:'x3',name:'クリティカル護符',icon:'💥',desc:'クリティカル率+10%',          cost:1000, effect:()=>{state.critBonus=(state.critBonus||0)+0.1;},effectLabel:'クリ+10%'},
+];
+
+// ════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════
+let state = {
+  tokens: 500,
+  luck: 1.00,
+  equippedAura: null,
+  equippedGear: null,
+  inventory: [],
+  purchasedShop: [],
+  currentBattle: null,
+  playerHp: 100,
+  playerMaxHp: 100,
+  isBattling: false,
+  pityCounter: 0,
+  pityGuarantee: 90,
+  totalPulls: 0,
+  sessionStats: {pulls:0,tokens_earned:0,battles_won:0},
+  achievements: [],
+  enhancedAuras: {},
+  critBonus: 0,
+  prestige: 0,
+  prestigeBonus: 1,
+};
+
+// ════════════════════════════════════════════
+//  UTILS
+// ════════════════════════════════════════════
+function getRarityData(id){return RARITIES.find(r=>r.id===id);}
+function getAuraData(id){return AURAS.find(a=>a.id===id);}
+function getPlayerAtk(){
+  if(!state.equippedAura) return 0;
+  const a=getAuraData(state.equippedAura);
+  const r=getRarityData(a.rarity);
+  const enh=state.enhancedAuras[state.equippedAura]||0;
+  return Math.round(r.atk*(1+enh*0.3));
+}
+
+function effectiveLuck(){
+  let l=state.luck;
+  if(state.equippedGear){
+    const g=LUCK_GEARS.find(g=>g.id===state.equippedGear);
+    if(g) l*=(1+g.luckBonus);
+  }
+  return +(l*state.prestigeBonus).toFixed(3);
+}
+
+// ── ROLL GACHA ──
+// calcAdjProb: 正規化前の「重み」を返す（maxProbで上限キャップ）
+function calcAdjProb(r, luck){
+  if(r.luckScale === 0) return r.baseProb; // common/uncommon固定
+  const ratio = luck / r.minLuckMult;
+  if(ratio < 0.01) return r.baseProb * 0.001; // 最低閾値未満はほぼ0
+  const raw = r.baseProb * Math.pow(ratio, r.luckScale);
+  return Math.min(raw, r.maxProb); // maxProbで上限キャップ
+}
+
+// calcNormalizedProbs: 実際にUI表示・ロールに使う正規化済み確率を返す
+// luck >= 200 の場合は OVER200_WEIGHTS の固定比率プールを使用
+// → ミシック50%, ディバイン30%, セレスティアル12%, オムニシエント5%, ヴォイド3%
+function calcNormalizedProbs(luck){
+  if(luck >= 200){
+    return RARITIES.map(r => ({...r, adjProb: OVER200_WEIGHTS[r.id] || 0}));
+  }
+  let pool = RARITIES.map(r => ({...r, adjProb: calcAdjProb(r, luck)}));
+  const total = pool.reduce((s,r) => s + r.adjProb, 0);
+  if(total <= 0) return pool;
+  return pool.map(r => ({...r, adjProb: r.adjProb / total}));
+}
+
+function rollGacha(){
+  state.pityCounter++;
+  state.totalPulls++;
+  state.sessionStats.pulls++;
+
+  // 天井
+  if(state.pityCounter >= state.pityGuarantee){
+    state.pityCounter = 0;
+    const pool = RARITIES.filter((_,i) => i >= 3);
+    const tot = pool.reduce((s,r) => s + r.baseProb, 0);
+    let rn = Math.random() * tot;
+    let chosen = pool[0];
+    for(const r of pool){ rn -= r.baseProb; if(rn <= 0){ chosen = r; break; } }
+    const auras = AURAS.filter(a => a.rarity === chosen.id);
+    return auras[Math.floor(Math.random() * auras.length)];
+  }
+
+  const luck = effectiveLuck();
+  const normRarities = calcNormalizedProbs(luck);
+  let rand = Math.random();
+  for(const r of normRarities){
+    rand -= r.adjProb;
+    if(rand <= 0){
+      const auras = AURAS.filter(a => a.rarity === r.id);
+      return auras[Math.floor(Math.random() * auras.length)];
+    }
+  }
+  return AURAS[0];
+}
+
+function addToInventory(auraId){
+  const ex=state.inventory.find(i=>i.id===auraId);
+  if(ex){ex.count++;}
+  else{state.inventory.push({id:auraId,count:1});}
+}
+
+// ════════════════════════════════════════════
+//  BG CANVAS
+// ════════════════════════════════════════════
+const bgCanvas=document.getElementById('bg-canvas');
+const bgCtx=bgCanvas.getContext('2d');
+let bgW,bgH,bgAnim=0,currentBgStyle='default';
+let bgStars=[];
+
+function initBg(){
+  bgW=bgCanvas.width=window.innerWidth;
+  bgH=bgCanvas.height=window.innerHeight;
+  bgStars=[];
+  for(let i=0;i<140;i++){
+    bgStars.push({x:Math.random()*bgW,y:Math.random()*bgH,r:Math.random()*1.6+0.3,speed:0.15+Math.random()*0.45,twinkle:Math.random()*Math.PI*2});
+  }
+}
+window.addEventListener('resize',initBg);
+initBg();
+
+const BG_STYLES={
+  default:   {colors:['#04040f','#090520','#04040f'],starColor:'rgba(255,255,255,',accent:null},
+  rare:      {colors:['#040518','#081045','#040518'],starColor:'rgba(100,150,255,',accent:'#4488ff'},
+  epic:      {colors:['#0d0220','#1e0040','#0d0220'],starColor:'rgba(200,100,255,',accent:'#cc44ff'},
+  legendary: {colors:['#1a0c00','#3d1c00','#1a0c00'],starColor:'rgba(255,200,50,', accent:'#ffaa00'},
+  mythic:    {colors:['#1a0010','#3d0020','#1a0010'],starColor:'rgba(255,80,120,', accent:'#ff2266'},
+  divine:    {colors:['#001830','#003060','#001830'],starColor:'rgba(100,220,255,',accent:'#00ffff'},
+  celestial: {colors:['#0f0f0f','#1c1c1c','#0f0f0f'],starColor:'rgba(255,255,255,',accent:'#ffffff'},
+  omniscient:{colors:['#1a1a00','#383800','#1a1a00'],starColor:'rgba(255,255,100,',accent:'#ffee00'},
+  void:      {colors:['#08001e','#0f002e','#08001e'],starColor:'rgba(150,50,255,', accent:'#aa00ff'},
+};
+
+let bgParticles=[];
+function setBgStyle(styleId){
+  currentBgStyle=BG_STYLES[styleId]?styleId:'default';
+  bgParticles=[];
+  if(styleId&&styleId!=='default'){
+    for(let i=0;i<35;i++){
+      bgParticles.push({
+        x:Math.random()*bgW,y:Math.random()*bgH,
+        vx:(Math.random()-.5)*.4,vy:-(Math.random()*.7+.2),
+        r:Math.random()*3+1,life:1,
+        color:BG_STYLES[styleId]?.accent||'#fff'
+      });
+    }
+  }
+}
+
+function drawBg(){
+  bgAnim+=0.004;
+  const style=BG_STYLES[currentBgStyle]||BG_STYLES.default;
+  const g=bgCtx.createLinearGradient(0,0,bgW,bgH);
+  g.addColorStop(0,style.colors[0]);g.addColorStop(0.5,style.colors[1]);g.addColorStop(1,style.colors[2]);
+  bgCtx.fillStyle=g;bgCtx.fillRect(0,0,bgW,bgH);
+
+  bgStars.forEach(s=>{
+    s.twinkle+=0.025;s.y-=s.speed*0.12;
+    if(s.y<0){s.y=bgH;s.x=Math.random()*bgW;}
+    const alpha=0.35+Math.sin(s.twinkle)*0.3;
+    bgCtx.beginPath();bgCtx.arc(s.x,s.y,s.r,0,Math.PI*2);
+    bgCtx.fillStyle=style.starColor+alpha+')';bgCtx.fill();
+  });
+
+  if(style.accent){
+    const rx=bgW/2+Math.sin(bgAnim)*70,ry=bgH/2+Math.cos(bgAnim*0.65)*55;
+    const rg=bgCtx.createRadialGradient(rx,ry,0,rx,ry,260);
+    const hex=style.accent.replace('#','');
+    const rr=parseInt(hex.substring(0,2),16),rg2=parseInt(hex.substring(2,4),16),rb=parseInt(hex.substring(4,6),16);
+    rg.addColorStop(0,`rgba(${rr},${rg2},${rb},0.09)`);rg.addColorStop(1,'transparent');
+    bgCtx.fillStyle=rg;bgCtx.fillRect(0,0,bgW,bgH);
+  }
+
+  bgParticles=bgParticles.filter(p=>{
+    p.x+=p.vx;p.y+=p.vy;p.life-=0.004;
+    if(p.life<=0) return false;
+    bgCtx.beginPath();bgCtx.arc(p.x,p.y,p.r*p.life,0,Math.PI*2);
+    bgCtx.fillStyle=p.color+(Math.round(p.life*70)).toString(16).padStart(2,'0');bgCtx.fill();
+    return true;
+  });
+  requestAnimationFrame(drawBg);
+}
+drawBg();
+
+// ════════════════════════════════════════════
+//  UI HELPERS
+// ════════════════════════════════════════════
+function switchPanel(id){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('panel-'+id).classList.add('active');
+  document.getElementById('nav-'+id).classList.add('active');
+  if(id==='stats')    renderStatsPanel();
+  if(id==='dungeon')  renderDungeons();
+  if(id==='inventory')renderInventory();
+  if(id==='shop')     renderShop();
+  if(id==='admin')    { if(adminUnlocked) renderAdminPanel(); }
+  if(id==='help')     renderHelpPanel();
+}
+
+// ── ガイドバナー表示切替 ──
+function toggleGuideBanner(){
+  const b=document.getElementById('guide-banner');
+  b.style.display=b.style.display==='none'?'flex':'none';
+}
+
+// ════════════════════════════════════════════
+//  ADMIN PANEL
+// ════════════════════════════════════════════
+const ADMIN_ACTIONS = [
+  {icon:'💎',label:'トークン +1000',    color:'#00f5ff', action:()=>{state.tokens+=1000;updateTopBar();showToast('💎 +1000トークン付与！');}},
+  {icon:'💰',label:'トークン +10000',   color:'#00f5ff', action:()=>{state.tokens+=10000;updateTopBar();showToast('💰 +10000トークン付与！');}},
+  {icon:'🏦',label:'トークン +100000',  color:'#00f5ff', action:()=>{state.tokens+=100000;updateTopBar();showToast('🏦 +100000トークン付与！');}},
+  {icon:'🍀',label:'LUCK × 2',         color:'#ffd700', action:()=>{state.luck=+(state.luck*2).toFixed(3);updateTopBar();renderRateTable();showToast('🍀 LUCKが2倍に！');}},
+  {icon:'🌟',label:'LUCK × 10',        color:'#ffd700', action:()=>{state.luck=+(state.luck*10).toFixed(3);updateTopBar();renderRateTable();showToast('🌟 LUCKが10倍に！');}},
+  {icon:'⚡',label:'LUCK +100',         color:'#ffd700', action:()=>{state.luck=+(state.luck+100).toFixed(3);updateTopBar();renderRateTable();showToast('⚡ LUCK +100！');}},
+  {icon:'🔮',label:'全オーラ入手',      color:'#cc44ff', action:()=>{AURAS.forEach(a=>addToInventory(a.id));renderInventory();showToast('🔮 全オーラをインベントリに追加！');spawnParticles('#cc44ff',8);}},
+  {icon:'👑',label:'VOIDオーラ入手',    color:'#aa00ff', action:()=>{addToInventory('a19');addToInventory('a20');renderInventory();showToast('👑 VOIDオーラを入手！');spawnParticles('#aa00ff',10);}},
+  {icon:'✨',label:'DIVINEオーラ入手',  color:'#00ffff', action:()=>{addToInventory('a13');addToInventory('a14');renderInventory();showToast('✨ DIVINEオーラを入手！');spawnParticles('#00ffff',8);}},
+  {icon:'❤️',label:'HP MAX設定',       color:'#ff69b4', action:()=>{state.playerMaxHp=99999;state.playerHp=99999;showToast('❤️ HP MAX！');}},
+  {icon:'💥',label:'クリティカル100%', color:'#ff8c00', action:()=>{state.critBonus=1.0;showToast('💥 クリティカル率100%！');}},
+  {icon:'🏆',label:'全実績解除',        color:'#ffd700', action:()=>{ACHIEVEMENTS.forEach(a=>{if(!state.achievements.includes(a.id)){state.achievements.push(a.id);state.tokens+=a.reward;}});updateTopBar();renderAdminPanel();showToast('🏆 全実績解除！');}},
+  {icon:'🎯',label:'天井即確定',        color:'#ff2266', action:()=>{state.pityCounter=state.pityGuarantee-1;updatePityBar();showToast('🎯 次回召喚で天井確定！');}},
+  {icon:'⭐',label:'プレステージ+1',   color:'#ffee00', action:()=>{state.prestige++;state.prestigeBonus=1+state.prestige*0.5;updateTopBar();renderRateTable();showToast('⭐ プレステージ +1！');}},
+  {icon:'🔄',label:'ステータスリセット',color:'#ff4444', action:()=>{ showConfirmDialog('本当にリセットしますか？\nインベントリ・トークン・実績が全て消えます。', ()=>{ state.luck=1;state.tokens=500;state.inventory=[];state.equippedAura=null;state.equippedGear=null;state.totalPulls=0;state.pityCounter=0;state.sessionStats={pulls:0,tokens_earned:0,battles_won:0};state.achievements=[];state.enhancedAuras={};state.critBonus=0;state.playerMaxHp=100;state.prestige=0;state.prestigeBonus=1;updateTopBar();renderInventory();renderDungeons();renderRateTable();updatePityBar();setBgStyle('default');renderAdminPanel();showToast('🔄 ゲームをリセットしました'); }); }},
+  {icon:'💾',label:'今すぐセーブ', color:'#00f5ff', action:()=>{saveGame();}},
+  {icon:'📂',label:'セーブからロード',color:'#ffd700', action:()=>{if(!confirm('セーブデータをロードしますか？（現在の進行は失われます）')) return;loadGame();}},
+];
+
+// ════════════════════════════════════════════
+//  HELP PANEL
+// ════════════════════════════════════════════
+const HELP_SECTIONS = [
+  {
+    id:'basic', icon:'🔮', title:'基本の遊び方',
+    color:'#cc44ff',
+    items:[
+      {icon:'1️⃣', head:'オーブを回す', body:'ガチャ画面のオーブをクリック、または下のボタンで召喚。×1は50💎、×10は450💎（1回分お得）、ラッキー召喚は500💎でレア以上確定。'},
+      {icon:'2️⃣', head:'オーラを装備する', body:'所持品タブで入手したオーラをクリックすると装備できる。装備中のオーラのATKがバトルに影響する。'},
+      {icon:'3️⃣', head:'ダンジョンに挑む', body:'必要ATKを満たしたダンジョンに挑戦してトークンを稼ごう。強いオーラを装備するほど高難易度に挑める。'},
+      {icon:'4️⃣', head:'ショップで強化', body:'稼いだトークンでラックを永続アップ。ラックが高いほど高レアリティが出やすくなる。まとめ買いほどお得！'},
+    ]
+  },
+  {
+    id:'gacha', icon:'🎲', title:'ガチャ・確率システム',
+    color:'#4488ff',
+    items:[
+      {icon:'📊', head:'レアリティ一覧', body:'コモン → アンコモン → レア → エピック → レジェンド → ミシック → ディバイン → セレスティアル → オムニシエント → ヴォイド の10段階。'},
+      {icon:'🍀', head:'LUCKの効果', body:'LUCKが高いほど高レアリティの出現確率が上昇。初期は1.00x。ギアやショップで最大数千倍まで強化可能。低レア（コモン・アンコモン）の確率は変化しない。'},
+      {icon:'🎯', head:'天井システム（ピティ）', body:'一定回数ハズレが続くとエピック以上が保証される（初期90回）。天井カウントはガチャ画面のバーで確認できる。ショップで天井回数を短縮可能。'},
+      {icon:'⭐', head:'ラッキー召喚', body:'500💎でレア以上が確定する特別な召喚。通常より確率が高いレアゾーンでのみ抽選される。'},
+    ]
+  },
+  {
+    id:'battle', icon:'⚔️', title:'バトルシステム',
+    color:'#ff4444',
+    items:[
+      {icon:'❤️', head:'HPとATK', body:'プレイヤーのHPは装備ATKに応じて自動調整。強いオーラを装備するほどHP上限も増える。敵に倒されてもペナルティはなし。'},
+      {icon:'💥', head:'クリティカル', body:'攻撃がクリティカルになると2.5倍ダメージ。クリ率はLUCKが高いほど、またショップの「クリティカル護符」で上昇する。'},
+      {icon:'🔥', head:'コンボボーナス', body:'連続攻撃でコンボが溜まり、勝利時のトークン報酬がアップ。5連撃を超えるとボーナスが付く。'},
+      {icon:'↩️', head:'逃げる', body:'バトル画面右上の「逃げる」でいつでも撤退可能。トークン獲得はないが、HPやペナルティもなし。'},
+    ]
+  },
+  {
+    id:'luck', icon:'⚙️', title:'ラックギア',
+    color:'#ffd700',
+    items:[
+      {icon:'🔄', head:'装備の仕組み', body:'ラックギアはガチャ画面で購入・装備できる。装備中は表示LUCKに掛け算でボーナスが乗る。1個だけ同時装備可能。'},
+      {icon:'💡', head:'外すと返金なし', body:'ギアを外しても購入コストは返金されない。より上位のギアに買い替えるときは資金に注意。'},
+      {icon:'📈', head:'ギア一覧', body:'幸運のお守り(+20%) → フォーチュンリング(+50%) → 翡翠の護符(+100%) → クリスタルオーブ(+300%) → 龍の鱗(+800%) → 運命の眼(+2000%)'},
+    ]
+  },
+  {
+    id:'inventory', icon:'👜', title:'インベントリ・強化',
+    color:'#00ff88',
+    items:[
+      {icon:'🃏', head:'重複収集', body:'同じオーラを複数持てる。枚数は右上に表示される。重複は強化の素材になる。'},
+      {icon:'★', head:'オーラ強化', body:'同一オーラを3枚集めると「強化」できる。強化すると3枚消費してATKが+30%アップ。強化は何度でも重ねられる。'},
+      {icon:'💫', head:'パッシブ収入', body:'オーラを装備しているとATKの1%が5秒ごとにトークンとして自動付与される。強いオーラほど収入が増える。'},
+    ]
+  },
+  {
+    id:'prestige', icon:'🌟', title:'プレステージ',
+    color:'#ffee00',
+    items:[
+      {icon:'🔓', head:'解放条件', body:'ヴォイドまたはオムニシエントオーラを入手するとプレステージ可能。トップバーの「プレステージ」ボタンで実行。'},
+      {icon:'♻️', head:'リセット内容', body:'インベントリ・トークン・総召喚数・天井カウントがリセットされる。ショップで買ったラックボーナスも一部リセット。'},
+      {icon:'📈', head:'永続ボーナス', body:'プレステージするたびに永続ラックボーナスが+50%ずつ増加（2周目は×1.5、3周目は×2.0…）。高周回ほど有利にスタートできる。'},
+    ]
+  },
+  {
+    id:'save', icon:'💾', title:'セーブ・データ',
+    color:'#00f5ff',
+    items:[
+      {icon:'🔄', head:'自動セーブ', body:'ゲームは10秒ごとに自動でセーブされる。通知は表示されないが常にバックグラウンドで保存中。'},
+      {icon:'📂', head:'手動ロード', body:'管理者パネル（🔑）にセーブ・ロードボタンがある。ゲーム起動時にセーブデータがあれば自動ロードされる。'},
+      {icon:'🌐', head:'保存場所', body:'データはブラウザのlocalStorageに保存。同じブラウザ・同じファイルであれば次回起動時に引き継がれる。ブラウザのキャッシュ削除で消える可能性があるので注意。'},
+    ]
+  },
+  {
+    id:'achieve', icon:'🏆', title:'実績・統計',
+    color:'#ff8c00',
+    items:[
+      {icon:'🏅', head:'実績報酬', body:'特定の条件を達成すると実績が解除され、トークンが付与される。実績タブで進捗を確認できる。'},
+      {icon:'📊', head:'統計情報', body:'実績タブ上部に総召喚数・バトル勝利数・最大コンボ・天井カウントなどのセッション統計が表示される。'},
+      {icon:'💡', head:'実績一覧のヒント', body:'未解除の実績はグレーアウトされ達成条件が表示される。まずは「初めての召喚」「レア発見」から狙おう。'},
+    ]
+  },
+];
+
+function renderHelpPanel(){
+  const container = document.getElementById('help-content');
+  if(!container) return;
+
+  container.innerHTML = '';
+
+  // タブバー
+  const tabBar = document.createElement('div');
+  tabBar.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px;';
+  HELP_SECTIONS.forEach((sec, i) => {
+    const tab = document.createElement('button');
+    tab.id = 'help-tab-'+sec.id;
+    tab.style.cssText = 'font-family:"Noto Sans JP",sans-serif;font-size:10px;padding:5px 11px;border-radius:20px;cursor:pointer;transition:all .2s;border:1px solid '+sec.color+'44;background:'+sec.color+'0a;color:'+sec.color+'aa;';
+    tab.innerHTML = sec.icon+' '+sec.title;
+    tab.onclick = () => showHelpSection(sec.id);
+    tabBar.appendChild(tab);
+  });
+  container.appendChild(tabBar);
+
+  // セクション本体
+  const body = document.createElement('div');
+  body.id = 'help-body';
+  container.appendChild(body);
+
+  // デフォルト表示
+  showHelpSection('basic');
+}
+
+function showHelpSection(id){
+  const sec = HELP_SECTIONS.find(s => s.id === id);
+  if(!sec) return;
+
+  // タブのアクティブ状態
+  HELP_SECTIONS.forEach(s => {
+    const t = document.getElementById('help-tab-'+s.id);
+    if(!t) return;
+    if(s.id === id){
+      t.style.background = s.color+'22';
+      t.style.borderColor = s.color+'88';
+      t.style.color = s.color;
+      t.style.fontWeight = '700';
+    } else {
+      t.style.background = s.color+'0a';
+      t.style.borderColor = s.color+'44';
+      t.style.color = s.color+'aa';
+      t.style.fontWeight = '400';
+    }
+  });
+
+  const body = document.getElementById('help-body');
+  if(!body) return;
+
+  body.innerHTML = '';
+
+  // セクションタイトル
+  const title = document.createElement('div');
+  title.style.cssText = 'font-family:"Cinzel Decorative",serif;font-size:15px;color:'+sec.color+';margin-bottom:14px;letter-spacing:2px;display:flex;align-items:center;gap:9px;';
+  title.innerHTML = '<span style="font-size:22px;">'+sec.icon+'</span> '+sec.title;
+  body.appendChild(title);
+
+  // アイテムカード
+  sec.items.forEach((item, idx) => {
+    const card = document.createElement('div');
+    card.style.cssText = 'background:rgba(255,255,255,0.025);border:1px solid '+sec.color+'22;border-left:3px solid '+sec.color+'88;border-radius:0 10px 10px 0;padding:13px 15px;margin-bottom:10px;animation:helpFadeIn .3s ease '+idx*0.07+'s backwards;';
+    card.innerHTML =
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">' +
+        '<span style="font-size:18px;">'+item.icon+'</span>' +
+        '<span style="font-size:13px;font-weight:700;color:'+sec.color+';">'+item.head+'</span>' +
+      '</div>' +
+      '<div style="font-size:11px;color:rgba(255,255,255,0.6);line-height:1.8;">'+item.body+'</div>';
+    body.appendChild(card);
+  });
+}
+
+// ════════════════════════════════════════════
+//  ADMIN AUTH
+// ════════════════════════════════════════════
+const ADMIN_PASSWORD = 'TTJP';
+let adminUnlocked = false;
+
+function promptAdminPassword(){
+  // パネルを表示してロック画面を出す
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('panel-admin').classList.add('active');
+  document.getElementById('nav-admin').classList.add('active');
+  if(adminUnlocked){
+    showAdminUnlocked();
+  } else {
+    document.getElementById('admin-lock-screen').style.display='flex';
+    document.getElementById('admin-unlocked-screen').style.display='none';
+    const inp=document.getElementById('admin-pw-input');
+    inp.value='';
+    document.getElementById('admin-pw-error').style.opacity='0';
+    setTimeout(()=>inp.focus(),100);
+  }
+}
+
+function checkAdminPassword(){
+  const val=document.getElementById('admin-pw-input').value;
+  if(val===ADMIN_PASSWORD){
+    adminUnlocked=true;
+    showAdminUnlocked();
+    showToast('🔓 管理者モード解錠！');
+    spawnParticles('#ff4444',5);
+  } else {
+    const err=document.getElementById('admin-pw-error');
+    err.style.opacity='1';
+    const inp=document.getElementById('admin-pw-input');
+    inp.style.borderColor='rgba(255,50,50,0.8)';
+    inp.style.boxShadow='0 0 10px rgba(255,50,50,0.3)';
+    setTimeout(()=>{err.style.opacity='0';inp.style.borderColor='rgba(255,68,68,0.4)';inp.style.boxShadow='none';},2000);
+    inp.value='';
+  }
+}
+
+function showAdminUnlocked(){
+  document.getElementById('admin-lock-screen').style.display='none';
+  document.getElementById('admin-unlocked-screen').style.display='block';
+  renderAdminPanel();
+}
+
+function lockAdminPanel(){
+  adminUnlocked=false;
+  document.getElementById('admin-lock-screen').style.display='flex';
+  document.getElementById('admin-unlocked-screen').style.display='none';
+  document.getElementById('admin-pw-input').value='';
+  showToast('🔒 管理者パネルをロックしました');
+}
+
+function renderAdminPanel(){
+  const grid=document.getElementById('admin-grid');
+  if(!grid) return;
+  grid.innerHTML='';
+  ADMIN_ACTIONS.forEach(act=>{
+    const card=document.createElement('div');
+    card.style.cssText='border-radius:10px;padding:14px;border:1px solid '+act.color+'33;background:'+act.color+'08;text-align:center;cursor:pointer;transition:all .2s;';
+    card.onmouseover=()=>{card.style.background=act.color+'18';card.style.borderColor=act.color+'66';};
+    card.onmouseout=()=>{card.style.background=act.color+'08';card.style.borderColor=act.color+'33';};
+    card.innerHTML='<div style="font-size:28px;margin-bottom:7px;">'+act.icon+'</div><div style="font-size:11px;font-weight:700;color:'+act.color+';font-family:\'Rajdhani\',sans-serif;">'+act.label+'</div>';
+    card.onclick=()=>{act.action();renderAdminPanel();};
+    grid.appendChild(card);
+  });
+  const info=document.createElement('div');
+  info.style.cssText='grid-column:1/-1;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:12px 16px;font-size:11px;color:rgba(255,255,255,0.45);line-height:2;font-family:"Orbitron",sans-serif;';
+  info.innerHTML='<span style="color:#ffd700;">LUCK</span> '+effectiveLuck().toFixed(3)+'x &nbsp;|&nbsp; <span style="color:#00f5ff;">TOKEN</span> '+state.tokens.toLocaleString()+' &nbsp;|&nbsp; <span style="color:#ff69b4;">HP</span> '+state.playerMaxHp+' &nbsp;|&nbsp; <span style="color:#ff8c00;">CRIT</span> '+Math.round((0.15+(state.critBonus||0))*100)+'% &nbsp;|&nbsp; <span style="color:#ffee00;">PRESTIGE</span> '+state.prestige;
+  grid.appendChild(info);
+}
+
+let toastTimeout=null;
+
+// ── カスタム確認ダイアログ ──
+function showConfirmDialog(msg, onOk){
+  const modal = document.getElementById('confirm-modal');
+  document.getElementById('confirm-modal-msg').textContent = msg;
+  modal.style.display = 'flex';
+  const ok = document.getElementById('confirm-modal-ok');
+  const cancel = document.getElementById('confirm-modal-cancel');
+  // 一度だけ発火するようにクローン置換
+  const newOk = ok.cloneNode(true);
+  const newCancel = cancel.cloneNode(true);
+  ok.parentNode.replaceChild(newOk, ok);
+  cancel.parentNode.replaceChild(newCancel, cancel);
+  newOk.onmouseover = ()=>newOk.style.background='rgba(255,40,40,0.3)';
+  newOk.onmouseout  = ()=>newOk.style.background='rgba(255,40,40,0.15)';
+  newCancel.onmouseover = ()=>newCancel.style.background='rgba(255,255,255,0.12)';
+  newCancel.onmouseout  = ()=>newCancel.style.background='rgba(255,255,255,0.05)';
+  newOk.onclick = () => { modal.style.display='none'; onOk(); };
+  newCancel.onclick = () => { modal.style.display='none'; };
+}
+
+function showToast(msg,dur=2800){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  if(toastTimeout) clearTimeout(toastTimeout);
+  toastTimeout=setTimeout(()=>t.classList.remove('show'),dur);
+}
+
+function updateTopBar(){
+  const l=effectiveLuck();
+  document.getElementById('luck-val').textContent=l.toFixed(2)+'x';
+  document.getElementById('token-val').textContent=state.tokens.toLocaleString();
+  const chip=document.getElementById('equipped-aura-chip');
+  if(state.equippedAura){
+    const a=getAuraData(state.equippedAura);
+    const r=getRarityData(a.rarity);
+    chip.textContent=a.emoji+' '+a.name;
+    chip.style.borderColor=r.color+'88';chip.style.color=r.color;
+  } else {
+    chip.textContent='⚪ 未装備';chip.style.borderColor='rgba(255,255,255,0.15)';chip.style.color='rgba(255,255,255,0.55)';
+  }
+}
+
+function makeAuraGradient(rarityId,size=60){
+  const r=getRarityData(rarityId);
+  const div=document.createElement('div');
+  div.style.cssText=`width:${size}px;height:${size}px;border-radius:50%;
+    background:radial-gradient(circle at 35% 35%,rgba(255,255,255,0.6),${r.color}aa 50%,${r.color}22);
+    box-shadow:0 0 ${size/2.5}px ${r.color}88,0 0 ${size}px ${r.color}33;
+    flex-shrink:0;`;
+  return div;
+}
+
+// ════════════════════════════════════════════
+//  GACHA ANIMATION — EPIC REVAMP
+// ════════════════════════════════════════════
+let gachaLocked=false;
+const animOverlay=()=>document.getElementById('gacha-anim-overlay');
+
+function playGachaAnimation(rData, cb){
+  const rarityIndex=RARITIES.findIndex(r=>r.id===rData.id);
+  const overlay=animOverlay();
+  overlay.classList.add('show');
+
+  const flashLayer=document.getElementById('gacha-flash-layer');
+  const spinAura=document.getElementById('spin-aura');
+  const revealText=document.getElementById('rarity-reveal-text');
+  const lightningRing=document.getElementById('lightning-ring');
+  const beamCanvas=document.getElementById('gacha-beam-canvas');
+  const bCtx=beamCanvas.getContext('2d');
+
+  // Reset
+  flashLayer.style.opacity='0';
+  spinAura.style.display='none';
+  revealText.style.display='none';
+  lightningRing.style.display='none';
+  beamCanvas.width=window.innerWidth;
+  beamCanvas.height=window.innerHeight;
+  bCtx.clearRect(0,0,beamCanvas.width,beamCanvas.height);
+
+  const color=rData.color;
+  const isEpicPlus=rarityIndex>=4;
+  const isDivinePlus=rarityIndex>=6;
+  const isVoidPlus=rarityIndex>=8;
+
+  // Phase 1: rapid flash pulses
+  let flashCount=rarityIndex<=1?1:rarityIndex<=3?3:rarityIndex<=5?6:10;
+  let f=0;
+  const flashInterval=isEpicPlus?60:100;
+
+  function doFlashPhase(){
+    if(f>=flashCount*2){
+      phase2();return;
+    }
+    flashLayer.style.background=color;
+    const intensity=0.15+rarityIndex*0.05;
+    flashLayer.style.opacity=f%2===0?String(Math.min(0.8,intensity)):'0';
+    f++;
+    setTimeout(doFlashPhase,flashInterval);
+  }
+
+  // Phase 2: spin + beam (for rare+)
+  function phase2(){
+    if(rarityIndex<2){
+      // Common/uncommon: fast finish
+      flashLayer.style.opacity='0';
+      overlay.classList.remove('show');
+      cb();return;
+    }
+
+    // Show spinning orb
+    spinAura.style.display='block';
+    spinAura.style.width=spinAura.style.height=(100+rarityIndex*10)+'px';
+    spinAura.style.borderRadius='50%';
+    spinAura.style.background=`radial-gradient(circle at 35% 35%,rgba(255,255,255,0.5),${color}bb 50%,${color}33)`;
+    spinAura.style.boxShadow=`0 0 ${40+rarityIndex*15}px ${color},0 0 ${80+rarityIndex*30}px ${color}55`;
+
+    // Epic+: beam rays
+    if(isEpicPlus){
+      drawBeams(bCtx,beamCanvas,color,rarityIndex);
+    }
+
+    // Lightning rings for divine+
+    if(isDivinePlus){
+      lightningRing.style.display='block';
+      lightningRing.style.borderColor=color;
+      lightningRing.style.boxShadow=`0 0 30px ${color},inset 0 0 30px ${color}44`;
+      setTimeout(()=>lightningRing.style.display='none',700);
+    }
+
+    // Screen shake for mythic+
+    if(rarityIndex>=5){
+      document.body.style.animation=`none`;
+      document.getElementById('game-root').style.animation='';
+      shakeScreen(rarityIndex);
+    }
+
+    const spinDur=isVoidPlus?1800:isDivinePlus?1400:isEpicPlus?1000:600;
+
+    setTimeout(()=>{
+      spinAura.style.display='none';
+      bCtx.clearRect(0,0,beamCanvas.width,beamCanvas.height);
+
+      // Big flash
+      flashLayer.style.background=color;
+      flashLayer.style.opacity='0.9';
+      setTimeout(()=>{flashLayer.style.opacity='0';},200);
+
+      // Rarity reveal text
+      if(rarityIndex>=3){
+        revealText.style.display='block';
+        revealText.textContent=rData.jpName+'!!';
+        revealText.style.color=color;
+        revealText.style.animation='none';
+        setTimeout(()=>{revealText.style.animation='rarityReveal 0.8s cubic-bezier(0.175,0.885,0.32,1.275) forwards';},10);
+
+        // Extra lightning rings
+        if(isDivinePlus){
+          for(let i=0;i<3;i++){
+            setTimeout(()=>{
+              const ring=document.createElement('div');
+              ring.style.cssText=`position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+                width:200px;height:200px;border-radius:50%;border:2px solid ${color};
+                box-shadow:0 0 20px ${color};z-index:203;pointer-events:none;
+                animation:lightningExpand 0.7s ease-out forwards;`;
+              document.body.appendChild(ring);
+              setTimeout(()=>ring.remove(),800);
+            },i*200);
+          }
+        }
+      }
+
+      spawnParticles(color,rarityIndex+1);
+      if(isEpicPlus) spawnParticles(color,rarityIndex+1);
+
+      setTimeout(()=>{
+        revealText.style.display='none';
+        overlay.classList.remove('show');
+        cb();
+      },rarityIndex>=5?1200:rarityIndex>=3?900:400);
+
+    },spinDur);
+  }
+
+  doFlashPhase();
+}
+
+let beamAnimId=null;
+function drawBeams(ctx,canvas,color,rarityIndex){
+  const cx=canvas.width/2,cy=canvas.height/2;
+  const numBeams=4+rarityIndex*2;
+  const maxLen=Math.max(canvas.width,canvas.height)*0.8;
+  let t=0;
+  function anim(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    t+=0.05;
+    for(let i=0;i<numBeams;i++){
+      const angle=(i/numBeams)*Math.PI*2+t;
+      const len=maxLen*(0.6+Math.sin(t+i)*0.4);
+      const grd=ctx.createLinearGradient(cx,cy,cx+Math.cos(angle)*len,cy+Math.sin(angle)*len);
+      grd.addColorStop(0,color+'cc');
+      grd.addColorStop(1,'transparent');
+      ctx.beginPath();
+      ctx.moveTo(cx,cy);
+      ctx.lineTo(cx+Math.cos(angle)*len,cy+Math.sin(angle)*len);
+      ctx.strokeStyle=grd;
+      ctx.lineWidth=2+Math.sin(t*2+i)*1.5;
+      ctx.stroke();
+    }
+    beamAnimId=requestAnimationFrame(anim);
+  }
+  anim();
+  setTimeout(()=>{cancelAnimationFrame(beamAnimId);ctx.clearRect(0,0,canvas.width,canvas.height);},3000);
+}
+
+function shakeScreen(rarityIndex){
+  const intensity=2+rarityIndex*1.5;
+  const gr=document.getElementById('game-root');
+  let s=0;
+  const interval=setInterval(()=>{
+    s++;
+    const x=(Math.random()-.5)*intensity;
+    const y=(Math.random()-.5)*intensity;
+    gr.style.transform=`translate(${x}px,${y}px)`;
+    if(s>12){clearInterval(interval);gr.style.transform='';}
+  },50);
+}
+
+function spawnParticles(color,rarityIndex){
+  const layer=document.getElementById('particles-layer');
+  const count=10+rarityIndex*8;
+  for(let i=0;i<count;i++){
+    const p=document.createElement('div');
+    const size=3+Math.random()*10;
+    const x=10+Math.random()*80;
+    const delay=Math.random()*0.8;
+    const dur=1.2+Math.random()*2;
+    p.className='particle';
+    p.style.cssText=`left:${x}vw;bottom:${10+Math.random()*50}vh;width:${size}px;height:${size}px;background:${color};animation-duration:${dur}s;animation-delay:${delay}s;box-shadow:0 0 ${size*2}px ${color};opacity:.9;`;
+    layer.appendChild(p);
+    setTimeout(()=>p.remove(),(dur+delay+0.5)*1000);
+  }
+}
+
+// ════════════════════════════════════════════
+//  GACHA ACTIONS
+// ════════════════════════════════════════════
+function doGacha(count){
+  if(gachaLocked)return;
+  const cost=count===1?50:450;
+  if(state.tokens<cost){showToast('💎 トークンが足りません！');return;}
+  state.tokens-=cost;
+  gachaLocked=true;
+
+  if(count===1){
+    const aura=rollGacha();
+    const rData=getRarityData(aura.rarity);
+    playGachaAnimation(rData,()=>{
+      addToInventory(aura.id);
+      showSingleResult(aura);
+      renderInventory();
+      renderRateTable();
+      updatePityBar();
+      gachaLocked=false;
+    });
+  } else {
+    const results=[];
+    for(let i=0;i<count;i++) results.push(rollGacha());
+    const best=results.reduce((b,a)=>{
+      const ri=RARITIES.findIndex(r=>r.id===a.rarity);
+      const bi=RARITIES.findIndex(r=>r.id===b.rarity);
+      return ri>bi?a:b;
+    });
+    const rData=getRarityData(best.rarity);
+    playGachaAnimation(rData,()=>{
+      results.forEach(a=>addToInventory(a.id));
+      showMultiResult(results);
+      renderInventory();
+      renderRateTable();
+      updatePityBar();
+      gachaLocked=false;
+    });
+  }
+  updateTopBar();
+  checkAchievements();
+}
+
+function doLuckyGacha(){
+  if(gachaLocked)return;
+  if(state.tokens<500){showToast('💎 トークンが足りません！');return;}
+  state.tokens-=500;gachaLocked=true;
+  // Lucky: guarantee rare+（レア以上のみのプールで正規化）
+  const luck=effectiveLuck();
+  const minIndex=luck>=200?5:2; // luck200超ならミシック以上確定
+  const normAll=calcNormalizedProbs(luck);
+  const pool=normAll.filter((_,i)=>i>=minIndex);
+  const poolTotal=pool.reduce((s,r)=>s+r.adjProb,0);
+  let rn=Math.random()*poolTotal;
+  let chosen=pool[0];
+  for(const r of pool){rn-=r.adjProb;if(rn<=0){chosen=r;break;}}
+  const auras=AURAS.filter(a=>a.rarity===chosen.id);
+  const aura=auras[Math.floor(Math.random()*auras.length)];
+  const rData=getRarityData(aura.rarity);
+  playGachaAnimation(rData,()=>{
+    addToInventory(aura.id);showSingleResult(aura);renderInventory();renderRateTable();updatePityBar();gachaLocked=false;
+  });
+  updateTopBar();checkAchievements();
+}
+
+// ════════════════════════════════════════════
+//  RESULTS
+// ════════════════════════════════════════════
+let lastResultAuraId=null;
+
+function showSingleResult(aura){
+  lastResultAuraId=aura.id;
+  const rData=getRarityData(aura.rarity);
+  const rarityIndex=RARITIES.findIndex(r=>r.id===aura.rarity);
+
+  document.getElementById('result-rarity-label').textContent='— '+rData.jpName+' —';
+  document.getElementById('result-rarity-label').style.color=rData.color;
+  document.getElementById('result-name').textContent=aura.name;
+  document.getElementById('result-name').style.cssText=`color:${rData.color};text-shadow:0 0 28px ${rData.color}88;`;
+  document.getElementById('result-desc').textContent=aura.desc;
+  document.getElementById('result-atk').textContent=rData.atk.toLocaleString();
+  document.getElementById('result-atk').style.color=rData.color;
+  document.getElementById('result-rarity-num').textContent='#'+(rarityIndex+1)+'/'+RARITIES.length;
+
+  const visual=document.getElementById('result-aura-visual');
+  visual.innerHTML='';
+  const img=makeAuraGradient(aura.rarity,130);
+  img.style.position='relative';
+  if(rarityIndex>=4){
+    img.style.animation='orbFloat 1.5s ease-in-out infinite';
+  }
+  const emojiEl=document.createElement('div');
+  emojiEl.style.cssText=`position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:48px;`;
+  emojiEl.textContent=aura.emoji;
+  img.appendChild(emojiEl);
+  visual.appendChild(img);
+
+  // Floating particles inside result bg
+  const bgP=document.getElementById('result-bg-particles');
+  bgP.innerHTML='';
+  if(rarityIndex>=3){
+    for(let i=0;i<20;i++){
+      const p=document.createElement('div');
+      p.style.cssText=`position:absolute;width:${2+Math.random()*5}px;height:${2+Math.random()*5}px;
+        border-radius:50%;background:${rData.color};opacity:${0.2+Math.random()*0.4};
+        left:${Math.random()*100}%;top:${Math.random()*100}%;
+        animation:particleFly ${2+Math.random()*3}s linear ${Math.random()*2}s infinite;
+        box-shadow:0 0 6px ${rData.color};`;
+      bgP.appendChild(p);
+    }
+  }
+
+  document.getElementById('result-box').style.animation='none';
+  setTimeout(()=>{document.getElementById('result-box').style.animation='resultSlide 0.5s cubic-bezier(0.175,0.885,0.32,1.275) forwards';},10);
+  document.getElementById('result-overlay').classList.add('show');
+  if(rData.bg) setBgStyle(rData.bg);
+}
+
+function closeResult(){document.getElementById('result-overlay').classList.remove('show');}
+
+function equipResultAura(){
+  if(lastResultAuraId){
+    state.equippedAura=lastResultAuraId;
+    updateTopBar();renderInventory();
+    showToast('✦ オーラを装備しました！');
+    closeResult();
+  }
+}
+
+function showMultiResult(auras){
+  const grid=document.getElementById('multi-result-grid');
+  grid.innerHTML='';
+  auras.forEach((aura,idx)=>{
+    const r=getRarityData(aura.rarity);
+    const card=document.createElement('div');
+    card.className='multi-card';
+    card.style.borderColor=r.color+'44';
+    card.style.animationDelay=(idx*0.05)+'s';
+    const iconDiv=makeAuraGradient(aura.rarity,48);
+    iconDiv.classList.add('multi-aura-icon');
+    iconDiv.style.position='relative';
+    const em=document.createElement('div');
+    em.style.cssText='position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:20px;';
+    em.textContent=aura.emoji;
+    iconDiv.appendChild(em);
+    const nm=document.createElement('div');nm.className='multi-card-name';nm.style.color=r.color;nm.textContent=aura.name;
+    const rr=document.createElement('div');rr.className='multi-card-rarity';rr.textContent=r.jpName;
+    card.appendChild(iconDiv);card.appendChild(nm);card.appendChild(rr);
+    card.onclick=()=>{
+      state.equippedAura=aura.id;updateTopBar();renderInventory();
+      showToast('✦ '+aura.name+' を装備しました！');
+      if(r.bg) setBgStyle(r.bg);
+    };
+    grid.appendChild(card);
+  });
+  document.getElementById('multi-result-overlay').classList.add('show');
+}
+function closeMultiResult(){document.getElementById('multi-result-overlay').classList.remove('show');}
+
+// ════════════════════════════════════════════
+//  LUCK GEAR
+// ════════════════════════════════════════════
+function renderLuckGear(){
+  const grid=document.getElementById('luck-gear-grid');
+  grid.innerHTML='';
+  LUCK_GEARS.forEach(g=>{
+    const el=document.createElement('div');
+    el.className='luck-gear-item'+(state.equippedGear===g.id?' equipped-gear':'');
+    el.innerHTML=`<span class="gear-icon">${g.icon}</span><span class="gear-name">${g.name}</span><span class="gear-luck">${g.desc}</span><span class="gear-cost">${g.cost.toLocaleString()}💎</span>`;
+    el.onclick=()=>{
+      if(state.equippedGear===g.id){state.equippedGear=null;updateTopBar();renderLuckGear();renderRateTable();showToast('ギアを外しました');return;}
+      if(state.tokens<g.cost){showToast('💎 トークンが足りません！');return;}
+      state.tokens-=g.cost;state.equippedGear=g.id;
+      updateTopBar();renderLuckGear();renderRateTable();
+      showToast('⚙ '+g.name+' 装備！ LUCK x'+(1+g.luckBonus)+'!');
+    };
+    grid.appendChild(el);
+  });
+}
+
+// ── Rate Table ──
+function renderRateTable(){
+  const container=document.getElementById('rate-rows');
+  container.innerHTML='';
+  const luck=effectiveLuck();
+  const normRarities=calcNormalizedProbs(luck);
+  const luckOver200=luck>=200;
+
+  // ラック200超の注意表示
+  let notice=document.getElementById('luck200-notice');
+  const rateTable=document.getElementById('rate-table');
+  if(!notice){
+    notice=document.createElement('div');
+    notice.id='luck200-notice';
+    notice.style.cssText='font-size:10px;color:#ff2266;margin-bottom:7px;text-align:center;font-weight:700;';
+    rateTable.insertBefore(notice,rateTable.querySelector('#rate-rows'));
+  }
+  notice.textContent=luckOver200?'⚡ LUCK 200x超：ミシック50% / ディバイン30% / セレスティアル12% / オムニシエント5% / ヴォイド3%':'';
+
+  normRarities.slice().reverse().forEach(r=>{
+    const adjP=r.adjProb;
+    let pctStr;
+    if(adjP>=0.001)        pctStr=(adjP*100).toFixed(2)+'%';
+    else if(adjP>=0.00001) pctStr=(adjP*100).toFixed(4)+'%';
+    else if(adjP>0)        pctStr=(adjP*100).toFixed(6)+'%';
+    else                   pctStr='—';
+    const row=document.createElement('div');
+    row.className='rate-row';
+    const dimmed=luckOver200&&RARITIES.findIndex(x=>x.id===r.id)<5;
+    row.style.opacity=dimmed?'0.25':'1';
+    row.innerHTML=`<span class="rate-name" style="color:${r.color}">${r.jpName}</span><span class="rate-pct">${pctStr}</span>`;
+    container.appendChild(row);
+  });
+}
+
+// ── Pity Bar ──
+function updatePityBar(){
+  const fill=document.getElementById('pity-bar-fill');
+  const text=document.getElementById('pity-text');
+  const pct=state.pityCounter/state.pityGuarantee*100;
+  fill.style.width=pct+'%';
+  text.textContent=`天井まで ${state.pityGuarantee-state.pityCounter} 回（${Math.round(pct)}%）`;
+}
+
+// ════════════════════════════════════════════
+//  INVENTORY
+// ════════════════════════════════════════════
+function renderInventory(){
+  const grid=document.getElementById('inventory-grid');
+  const empty=document.getElementById('inv-empty');
+  grid.querySelectorAll('.inv-card').forEach(c=>c.remove());
+  if(state.inventory.length===0){if(empty)empty.style.display='block';return;}
+  if(empty) empty.style.display='none';
+  const sorted=[...state.inventory].sort((a,b)=>{
+    const ra=RARITIES.findIndex(r=>r.id===getAuraData(a.id).rarity);
+    const rb=RARITIES.findIndex(r=>r.id===getAuraData(b.id).rarity);
+    return rb-ra;
+  });
+  sorted.forEach(inv=>{
+    const aura=getAuraData(inv.id);
+    const r=getRarityData(aura.rarity);
+    const isEquipped=state.equippedAura===inv.id;
+    const enh=state.enhancedAuras[inv.id]||0;
+    const atkVal=enh>0?Math.round(r.atk*(1+enh*0.3)):r.atk;
+    const card=document.createElement('div');
+    card.className='inv-card'+(isEquipped?' equipped-card':'');
+    card.style.boxShadow=isEquipped?`0 0 14px ${r.color}44`:'';
+    const iconDiv=makeAuraGradient(aura.rarity,58);
+    iconDiv.classList.add('inv-aura-icon');iconDiv.style.position='relative';
+    const em=document.createElement('div');
+    em.style.cssText='position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:24px;';
+    em.textContent=aura.emoji;iconDiv.appendChild(em);
+    card.innerHTML=`
+      ${isEquipped?'<div class="equipped-badge">装備中</div>':''}
+      <div class="inv-count">×${inv.count}</div>
+      <div class="inv-name" style="color:${r.color}">${aura.name}</div>
+      <div class="inv-rarity">${r.jpName}</div>
+      <div class="inv-atk">⚔ ATK ${atkVal.toLocaleString()}</div>
+      ${inv.count>=3&&!isEquipped?`<div style="font-size:8px;color:#ffd700;margin-top:3px;cursor:pointer;" class="enh-hint">★ 強化 (×3)</div>`:''}
+    `;
+    card.insertBefore(iconDiv,card.firstChild.nextSibling||card.firstChild);
+    const enhHint=card.querySelector('.enh-hint');
+    if(enhHint) enhHint.onclick=(e)=>{e.stopPropagation();enhanceAura(inv.id);};
+    card.onclick=()=>{
+      state.equippedAura=isEquipped?null:inv.id;
+      if(state.equippedAura){showToast('✦ '+aura.name+' を装備！ ATK '+atkVal.toLocaleString());if(r.bg) setBgStyle(r.bg);}
+      else{setBgStyle('default');showToast('オーラを外しました');}
+      updateTopBar();renderInventory();renderDungeons();
+    };
+    grid.appendChild(card);
+  });
+}
+
+function enhanceAura(auraId){
+  const inv=state.inventory.find(i=>i.id===auraId);
+  if(!inv||inv.count<3){showToast('強化には×3必要です');return;}
+  inv.count-=3;if(inv.count===0) state.inventory=state.inventory.filter(i=>i.id!==auraId);
+  state.enhancedAuras[auraId]=(state.enhancedAuras[auraId]||0)+1;
+  const aura=getAuraData(auraId);const r=getRarityData(aura.rarity);
+  showToast('★ '+aura.name+' 強化！ ATK+'+(Math.round(r.atk*0.3)).toLocaleString());
+  spawnParticles(r.color,3);renderInventory();updateTopBar();
+}
+
+// ════════════════════════════════════════════
+//  DUNGEON
+// ════════════════════════════════════════════
+function renderDungeons(){
+  const list=document.getElementById('dungeon-list');
+  list.innerHTML='';
+  const playerAtk=getPlayerAtk();
+  DUNGEONS.forEach(d=>{
+    const locked=playerAtk<d.minAtk;
+    const card=document.createElement('div');
+    card.className='dungeon-card'+(locked?' locked':'');
+    card.innerHTML=`
+      <div class="dungeon-icon">${d.icon}</div>
+      <div class="dungeon-info">
+        <h4>${d.name}</h4>
+        ${d.minAtk>0?`<p class="dungeon-req">⚔ ATK ${d.minAtk.toLocaleString()}+ 必要</p>`:'<p style="font-size:10px;color:rgba(255,255,255,0.4);">初心者向け</p>'}
+      </div>
+      <div class="dungeon-rewards">
+        <div class="dungeon-reward-tokens">${d.tokenReward[0]}〜${d.tokenReward[1]}</div>
+        <div class="dungeon-reward-label">💎 TOKENS</div>
+      </div>
+    `;
+    if(!locked) card.onclick=()=>startBattle(d);
+    list.appendChild(card);
+  });
+}
+
+// ════════════════════════════════════════════
+//  BATTLE — FULLSCREEN
+// ════════════════════════════════════════════
+let battleCombo=0;
+let maxBattleCombo=0;
+const battleOverlay=()=>document.getElementById('battle-overlay');
+
+// Battle BG canvas
+let bBgCanvas=null;let bBgCtx=null;let bBgAnim=null;
+function initBattleBg(color){
+  bBgCanvas=document.getElementById('battle-bg-canvas');
+  bBgCtx=bBgCanvas.getContext('2d');
+  bBgCanvas.width=window.innerWidth;bBgCanvas.height=window.innerHeight;
+  if(bBgAnim) cancelAnimationFrame(bBgAnim);
+  let t=0;
+  const hex=color.replace('#','');
+  const rr=parseInt(hex.substring(0,2),16)||255;
+  const gg=parseInt(hex.substring(2,4),16)||50;
+  const bb=parseInt(hex.substring(4,6),16)||50;
+  function frame(){
+    t+=0.01;
+    const W=bBgCanvas.width,H=bBgCanvas.height;
+    bBgCtx.fillStyle='rgba(0,0,0,0.15)';
+    bBgCtx.fillRect(0,0,W,H);
+    // pulsing radial glow
+    const gx=W/2+Math.sin(t*0.7)*W*0.1;
+    const gy=H/2+Math.cos(t*0.5)*H*0.08;
+    const g=bBgCtx.createRadialGradient(gx,gy,0,gx,gy,H*0.6);
+    g.addColorStop(0,`rgba(${rr},${gg},${bb},0.06)`);
+    g.addColorStop(1,'transparent');
+    bBgCtx.fillStyle=g;bBgCtx.fillRect(0,0,W,H);
+    bBgAnim=requestAnimationFrame(frame);
+  }
+  frame();
+}
+function stopBattleBg(){if(bBgAnim){cancelAnimationFrame(bBgAnim);bBgAnim=null;}}
+
+function startBattle(dungeon){
+  if(state.isBattling){showToast('バトル中です！');return;}
+  if(!state.equippedAura){showToast('先にオーラを装備してください！');return;}
+
+  state.isBattling=true;
+  state.playerHp=state.playerMaxHp;
+  state.currentBattle={
+    dungeon,
+    enemyHp:dungeon.enemyHp,
+    enemyMaxHp:dungeon.enemyHp,
+    playerHp:state.playerMaxHp,
+  };
+  battleCombo=0;
+
+  // Setup UI
+  document.getElementById('battle-dungeon-name').textContent='⚔ '+dungeon.name;
+  document.getElementById('battle-enemy-icon').textContent=dungeon.enemyIcon;
+  document.getElementById('battle-enemy-name').textContent=dungeon.enemyName;
+  document.getElementById('battle-enemy-atk-row').textContent='ATK '+dungeon.enemyAtk.toLocaleString();
+  const atk=getPlayerAtk();
+  document.getElementById('battle-player-atk-row').textContent='ATK '+atk.toLocaleString();
+  document.getElementById('battle-log').innerHTML='';
+  document.getElementById('battle-btn-attack').disabled=false;
+
+  // Color from dungeon enemy
+  const color=dungeon.enemyIcon==='👺'?'#ff4444':dungeon.enemyIcon==='⚔️'?'#ffaa00':dungeon.enemyIcon==='🐲'?'#44ff88':dungeon.enemyIcon==='💀'?'#cc44ff':dungeon.enemyIcon==='👾'?'#00f5ff':'#aa00ff';
+  initBattleBg(color);
+
+  updateBattleUI();
+  battleOverlay().classList.add('show');
+  addBattleLog('event','⚔ バトル開始: '+dungeon.name+'！');
+}
+
+function addBattleLog(type,msg){
+  const log=document.getElementById('battle-log');
+  const div=document.createElement('div');
+  div.className='log-'+type;div.textContent=msg;
+  log.appendChild(div);
+  log.scrollTop=log.scrollHeight;
+  while(log.children.length>20) log.firstChild.remove();
+}
+
+function updateBattleUI(){
+  const b=state.currentBattle;if(!b)return;
+  const pp=Math.max(0,b.playerHp/state.playerMaxHp*100);
+  const ep=Math.max(0,b.enemyHp/b.enemyMaxHp*100);
+  document.getElementById('battle-player-hp-bar').style.width=pp+'%';
+  document.getElementById('battle-enemy-hp-bar').style.width=ep+'%';
+  document.getElementById('battle-player-hp-num').textContent=Math.max(0,Math.round(b.playerHp))+'/'+state.playerMaxHp;
+  document.getElementById('battle-enemy-hp-num').textContent=Math.max(0,Math.round(b.enemyHp))+'/'+b.enemyMaxHp;
+}
+
+function showDmgPopup(x,y,dmg,color,isCrit){
+  const el=document.createElement('div');
+  el.className='dmg-popup';
+  el.textContent=(isCrit?'💥 ':'')+dmg.toLocaleString();
+  el.style.cssText+=`left:${x}px;top:${y}px;color:${color};font-size:${isCrit?28:20}px;text-shadow:0 0 10px ${color};`;
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),1300);
+}
+
+function doAttack(){
+  if(!state.isBattling||!state.currentBattle) return;
+  const b=state.currentBattle;
+  const atk=getPlayerAtk();
+  const critChance=0.15+(state.critBonus||0)+(effectiveLuck()-1)*0.02;
+  const isCrit=Math.random()<critChance;
+  const variance=0.8+Math.random()*0.4;
+  const dmg=Math.round(atk*variance*(isCrit?2.5:1));
+  b.enemyHp-=dmg;
+  battleCombo++;
+  maxBattleCombo=Math.max(maxBattleCombo,battleCombo);
+
+  // Damage popup
+  const enemyEl=document.getElementById('battle-enemy-area');
+  const rect=enemyEl.getBoundingClientRect();
+  showDmgPopup(rect.left+rect.width/2-30,rect.top+20,dmg,isCrit?'#ff8c00':'#ff4444',isCrit);
+
+  // Shake enemy icon
+  const emojiEl=document.getElementById('battle-enemy-icon');
+  emojiEl.classList.remove('shake');
+  void emojiEl.offsetWidth;
+  emojiEl.classList.add('shake');
+
+  if(isCrit){
+    addBattleLog('crit','💥 クリティカル！ '+dmg+' ダメージ！（'+battleCombo+'連撃）');
+    spawnParticles('#ff8c00',3);
+  } else {
+    addBattleLog('player',dmg+' ダメージ！（'+battleCombo+'連撃）');
+  }
+
+  if(b.enemyHp<=0){
+    updateBattleUI();
+    const min=b.dungeon.tokenReward[0],max=b.dungeon.tokenReward[1];
+    const comboBonus=Math.floor(battleCombo*0.1);
+    const tokens=Math.round((min+Math.random()*(max-min))*(1+comboBonus*0.1));
+    state.tokens+=tokens;
+    state.sessionStats.tokens_earned+=tokens;
+    state.sessionStats.battles_won++;
+    addBattleLog('event','★ 勝利！'+(battleCombo>5?' コンボボーナス！ ':' ')+'トークン +'+tokens+'！');
+    battleCombo=0;
+    document.getElementById('battle-btn-attack').disabled=true;
+    setTimeout(()=>endBattle(true),1500);
+    updateTopBar();checkAchievements();
+    return;
+  }
+
+  // Enemy attacks
+  const eDmg=Math.round(b.dungeon.enemyAtk*(0.8+Math.random()*0.4));
+  b.playerHp-=eDmg;
+
+  const playerEl=document.getElementById('battle-player-area');
+  const pRect=playerEl.getBoundingClientRect();
+  showDmgPopup(pRect.left+pRect.width/2-20,pRect.top+20,eDmg,'#ff4444',false);
+
+  const pIcon=document.getElementById('battle-player-icon');
+  pIcon.classList.remove('shake');void pIcon.offsetWidth;pIcon.classList.add('shake');
+
+  addBattleLog('enemy',b.dungeon.enemyName+' から '+eDmg+' ダメージ！');
+
+  if(b.playerHp<=0){
+    b.playerHp=0;updateBattleUI();
+    addBattleLog('event','✗ 敗北... 次は勝てる！');
+    battleCombo=0;
+    document.getElementById('battle-btn-attack').disabled=true;
+    setTimeout(()=>endBattle(false),1500);
+    return;
+  }
+  updateBattleUI();
+  state.playerMaxHp=Math.max(100,getPlayerAtk()*2);
+}
+
+function doflee(){
+  addBattleLog('event','↩ 戦場から離脱...');
+  battleCombo=0;
+  setTimeout(()=>endBattle(false),600);
+}
+
+function endBattle(won){
+  state.isBattling=false;state.currentBattle=null;
+  stopBattleBg();
+  setTimeout(()=>{
+    battleOverlay().classList.remove('show');
+    renderDungeons();
+  },won?500:800);
+}
+
+// ════════════════════════════════════════════
+//  SHOP
+// ════════════════════════════════════════════
+function renderShop(){
+  const grid=document.getElementById('shop-grid');
+  grid.innerHTML='';
+  SHOP_ITEMS.forEach(item=>{
+    const purchased=state.purchasedShop.filter(id=>id===item.id).length;
+    const canAfford=state.tokens>=item.cost;
+    const card=document.createElement('div');
+    card.className='shop-item';
+    card.innerHTML=`
+      <span class="shop-item-icon">${item.icon}</span>
+      <div class="shop-item-name">${item.name}${purchased?` ×${purchased}`:''}</div>
+      <div class="shop-item-desc">${item.desc}</div>
+      <div class="shop-item-effect">${item.effectLabel}</div>
+      <div class="shop-item-cost" style="margin-top:7px;color:${canAfford?'#00f5ff':'#555'}">${item.cost.toLocaleString()} 💎</div>
+    `;
+    card.onclick=()=>{
+      if(state.tokens<item.cost){showToast('💎 トークンが足りません！');return;}
+      state.tokens-=item.cost;item.effect();state.purchasedShop.push(item.id);
+      updateTopBar();renderShop();renderRateTable();
+      showToast('✦ '+item.name+' 購入！');
+    };
+    grid.appendChild(card);
+  });
+}
+
+// ════════════════════════════════════════════
+//  ACHIEVEMENTS
+// ════════════════════════════════════════════
+const ACHIEVEMENTS=[
+  {id:'first_pull',  name:'運命の探求者',   desc:'はじめての召喚',                    icon:'🔮',reward:100, check:()=>state.totalPulls>=1},
+  {id:'pull_10',     name:'運命の賭博師',   desc:'10回召喚する',                       icon:'🎲',reward:300, check:()=>state.totalPulls>=10},
+  {id:'pull_100',    name:'強迫観念',       desc:'100回召喚する',                      icon:'💫',reward:1000,check:()=>state.totalPulls>=100},
+  {id:'first_rare',  name:'レア発見',       desc:'レアオーラを入手',                   icon:'💎',reward:200, check:()=>state.inventory.some(i=>getAuraData(i.id).rarity==='rare')},
+  {id:'first_epic',  name:'エピック降臨',   desc:'エピックオーラを入手',               icon:'🌀',reward:500, check:()=>state.inventory.some(i=>getAuraData(i.id).rarity==='epic')},
+  {id:'first_legend',name:'伝説誕生',       desc:'レジェンドオーラを入手',             icon:'👑',reward:2000,check:()=>state.inventory.some(i=>getAuraData(i.id).rarity==='legendary')},
+  {id:'first_mythic',name:'現実の彼方',     desc:'ミシックオーラを入手',               icon:'💀',reward:5000,check:()=>state.inventory.some(i=>getAuraData(i.id).rarity==='mythic')},
+  {id:'first_divine',name:'神に触れし者',   desc:'ディバインオーラを入手',             icon:'✨',reward:15000,check:()=>state.inventory.some(i=>getAuraData(i.id).rarity==='divine')},
+  {id:'win_10',      name:'ダンジョン猛者', desc:'ダンジョンバトル10勝',              icon:'⚔️',reward:500, check:()=>state.sessionStats.battles_won>=10},
+  {id:'combo_10',    name:'コンボマスター', desc:'バトルで10連撃コンボ',               icon:'🔥',reward:300, check:()=>maxBattleCombo>=10},
+  {id:'rich',        name:'トークン富豪',   desc:'トークン10000以上を保有',            icon:'💰',reward:0,   check:()=>state.tokens>=10000},
+  {id:'collector',   name:'オーラコレクター',desc:'10種類以上のオーラを入手',          icon:'🗂️',reward:1000,check:()=>state.inventory.length>=10},
+];
+
+function checkAchievements(){
+  ACHIEVEMENTS.forEach(ach=>{
+    if(state.achievements.includes(ach.id)) return;
+    if(ach.check()){
+      state.achievements.push(ach.id);
+      state.tokens+=ach.reward;
+      updateTopBar();
+      if(ach.reward>0) showToast('🏆 実績解除: '+ach.name+' +'+ach.reward+'💎',3500);
+      else showToast('🏆 実績解除: '+ach.name,3000);
+      spawnParticles('#ffd700',4);
+    }
+  });
+}
+
+function renderStatsPanel(){
+  const panel=document.getElementById('panel-stats');
+  if(!panel) return;
+  const invCount=state.inventory.length;
+  const rarityBreakdown={};
+  state.inventory.forEach(inv=>{
+    const a=getAuraData(inv.id);
+    rarityBreakdown[a.rarity]=(rarityBreakdown[a.rarity]||0)+inv.count;
+  });
+  const achUnlocked=state.achievements.length;
+  const achTotal=ACHIEVEMENTS.length;
+  const pct=Math.round(achUnlocked/achTotal*100);
+
+  panel.innerHTML=`
+    <div class="panel-header">📊 実績 & 統計</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:9px;margin-bottom:18px;">
+      ${[
+        {v:state.totalPulls,l:'総召喚数',c:'#00f5ff'},
+        {v:state.tokens.toLocaleString(),l:'トークン',c:'#ffd700'},
+        {v:state.sessionStats.battles_won,l:'バトル勝利',c:'#ff69b4'},
+        {v:invCount,l:'オーラ種類',c:'#00ff88'},
+        {v:maxBattleCombo,l:'最大コンボ',c:'#ffaa00'},
+        {v:state.pityGuarantee-state.pityCounter,l:'天井まで',c:'#cc44ff'},
+      ].map(s=>`<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:10px;text-align:center;">
+        <div style="font-size:22px;font-family:'Orbitron',sans-serif;font-weight:700;color:${s.c};">${s.v}</div>
+        <div style="font-size:9px;color:rgba(255,255,255,0.35);letter-spacing:1px;margin-top:2px;">${s.l}</div>
+      </div>`).join('')}
+    </div>
+
+    <div style="font-family:'Cinzel Decorative',serif;font-size:13px;color:#ffd700;margin-bottom:10px;">
+      実績 (${achUnlocked}/${achTotal} — ${pct}%)
+    </div>
+    <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:18px;">
+      ${ACHIEVEMENTS.map(ach=>{
+        const done=state.achievements.includes(ach.id);
+        return `<div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,${done?'0.05':'0.02'});border:1px solid rgba(255,255,255,${done?'0.12':'0.04'});border-radius:8px;padding:9px 13px;opacity:${done?1:0.45};">
+          <span style="font-size:20px;">${ach.icon}</span>
+          <div style="flex:1;">
+            <div style="font-size:12px;font-weight:700;color:${done?'#ffd700':'#fff'}">${ach.name}</div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.45);">${ach.desc}</div>
+          </div>
+          <span style="color:${done?'#ffd700':'rgba(255,255,255,0.2)'};font-size:${done?16:11}px;">${done?'✓':'+'+ach.reward}</span>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <div style="font-family:'Cinzel Decorative',serif;font-size:13px;color:#ffd700;margin-bottom:10px;">オーラコレクション</div>
+    <div style="display:flex;flex-direction:column;gap:4px;">
+      ${RARITIES.slice().reverse().map(r=>{
+        const count=rarityBreakdown[r.id]||0;
+        const total=AURAS.filter(a=>a.rarity===r.id).length;
+        const barW=total>0?Math.min(100,count/total*100):0;
+        return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">
+          <span style="font-size:10px;color:${r.color};font-weight:700;width:100px;flex-shrink:0;">${r.jpName}</span>
+          <div style="flex:1;height:5px;background:rgba(255,255,255,0.07);border-radius:3px;overflow:hidden;">
+            <div style="width:${barW}%;height:100%;background:${r.color};border-radius:3px;"></div>
+          </div>
+          <span style="font-size:9px;color:rgba(255,255,255,0.35);width:28px;text-align:right;">${count}/${total}</span>
+        </div>`;
+      }).join('')}
+    </div>
+  `;
+}
+
+// ════════════════════════════════════════════
+//  PRESTIGE
+// ════════════════════════════════════════════
+function canPrestige(){return state.inventory.some(i=>getAuraData(i.id).rarity==='void'||getAuraData(i.id).rarity==='omniscient');}
+function doPrestige(){
+  if(!canPrestige()){showToast('VOID または OMNISCIENT が必要！');return;}
+  showConfirmDialog('プレステージしますか？\nインベントリとトークンがリセットされ永続ラックボーナスを獲得します。', ()=>{ _doPrestige(); });
+}
+function _doPrestige(){
+  state.prestige++;
+  state.prestigeBonus=1+state.prestige*0.5;
+  state.luck=Math.max(1,state.luck*state.prestigeBonus*0.3);
+  state.tokens=1000*state.prestige;
+  state.inventory=[];state.equippedAura=null;state.equippedGear=null;
+  state.totalPulls=0;state.pityCounter=0;state.enhancedAuras={};
+  updateTopBar();renderInventory();renderDungeons();renderRateTable();updatePityBar();
+  setBgStyle('default');
+  showToast('🌟 プレステージ '+state.prestige+'！ 永続ラックボーナス獲得！');
+  spawnParticles('#ffee00',10);
+}
+
+// Prestige button in top bar
+(function(){
+  const btn=document.createElement('button');
+  btn.style.cssText='font-family:"Orbitron",sans-serif;font-size:8px;letter-spacing:1px;padding:4px 9px;border-radius:5px;cursor:pointer;border:1px solid rgba(255,238,0,0.35);background:rgba(255,238,0,0.07);color:#ffee00;transition:all .2s;';
+  btn.textContent='⭐ プレステージ';btn.onclick=doPrestige;
+  document.getElementById('top-bar').appendChild(btn);
+})();
+
+// ════════════════════════════════════════════
+//  PASSIVE INCOME
+// ════════════════════════════════════════════
+setInterval(()=>{
+  if(!state.equippedAura) return;
+  const income=Math.floor(getPlayerAtk()*0.01);
+  if(income>0){state.tokens+=income;updateTopBar();}
+  checkAchievements();
+},5000);
+
+// ════════════════════════════════════════════
+//  DAILY BONUS
+// ════════════════════════════════════════════
+(function checkDailyBonus(){
+  const today=new Date().toDateString();
+  let last=null;
+  try{last=localStorage.getItem('aura_daily');}catch(e){}
+  if(last!==today){
+    try{localStorage.setItem('aura_daily',today);}catch(e){}
+    const bonus=200+Math.floor(Math.random()*300);
+    state.tokens+=bonus;
+    updateTopBar();
+    setTimeout(()=>showToast('🌟 デイリーボーナス！ +'+bonus+'💎'),1200);
+  }
+})();
+
+// ════════════════════════════════════════════
+//  KEYBOARD SHORTCUTS
+// ════════════════════════════════════════════
+document.addEventListener('keydown',(e)=>{
+  if(e.key==='1') switchPanel('gacha');
+  if(e.key==='2') switchPanel('inventory');
+  if(e.key==='3') switchPanel('dungeon');
+  if(e.key==='4') switchPanel('shop');
+  if(e.key==='5') switchPanel('stats');
+  if((e.key==='r'||e.key==='R')&&!gachaLocked) doGacha(1);
+  if((e.key==='a'||e.key==='A')&&state.isBattling) doAttack();
+  if(e.key==='Escape'&&state.isBattling) doflee();
+});
+
+// ════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════
+// ════════════════════════════════════════════
+//  SAVE / LOAD
+// ════════════════════════════════════════════
+const SAVE_KEY = 'aura_chronicles_save';
+const SAVE_FIELDS = ['tokens','luck','equippedAura','equippedGear','inventory','purchasedShop',
+  'playerHp','playerMaxHp','pityCounter','pityGuarantee','totalPulls','sessionStats',
+  'achievements','enhancedAuras','critBonus','prestige','prestigeBonus'];
+
+function saveGame(silent=false){
+  try {
+    const data = {};
+    SAVE_FIELDS.forEach(k => { data[k] = state[k]; });
+    data._savedAt = new Date().toISOString();
+    data._version = 3;
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+    if(!silent) showToast('💾 セーブしました！');
+  } catch(e) {
+    if(!silent) showToast('⚠ セーブに失敗しました: ' + e.message);
+  }
+}
+
+function loadGame(){
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if(!raw){ showToast('📂 セーブデータが見つかりません'); return; }
+    const data = JSON.parse(raw);
+    SAVE_FIELDS.forEach(k => { if(data[k] !== undefined) state[k] = data[k]; });
+    // バトル中状態はリセット
+    state.isBattling = false; state.currentBattle = null;
+    // UI全更新
+    updateTopBar(); updatePityBar(); renderLuckGear(); renderRateTable();
+    renderInventory(); renderDungeons(); renderShop();
+    if(state.equippedAura){ const a=getAuraData(state.equippedAura); const r=getRarityData(a.rarity); if(r.bg) setBgStyle(r.bg); }
+    const dt = data._savedAt ? new Date(data._savedAt).toLocaleString('ja-JP') : '不明';
+    showToast('📂 ロードしました！（' + dt + '）', 3500);
+  } catch(e) {
+    showToast('⚠ ロードに失敗しました: ' + e.message);
+  }
+}
+
+// 自動セーブ（10秒ごと・表示なし）
+setInterval(() => {
+  try {
+    const data = {};
+    SAVE_FIELDS.forEach(k => { data[k] = state[k]; });
+    data._savedAt = new Date().toISOString();
+    data._version = 3;
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+  } catch(e) {}
+}, 500);
+
+function init(){
+  // セーブデータがあれば自動ロード、なければ初期値
+  const raw = (() => { try { return localStorage.getItem(SAVE_KEY); } catch(e){ return null; } })();
+  if(raw){
+    try{
+      const data = JSON.parse(raw);
+      SAVE_FIELDS.forEach(k => { if(data[k] !== undefined) state[k] = data[k]; });
+      state.isBattling = false; state.currentBattle = null;
+    } catch(e){ state.tokens = 500; }
+  } else {
+    state.tokens = 500;
+  }
+  renderLuckGear();renderRateTable();renderInventory();renderDungeons();renderShop();
+  updateTopBar();updatePityBar();
+  if(state.equippedAura){ const a=getAuraData(state.equippedAura); const r=getRarityData(a.rarity); if(r&&r.bg) setBgStyle(r.bg); }
+}
+init();
+
+if(!localStorage.getItem(SAVE_KEY)) setTimeout(()=>showToast('🌟 スタートボーナス 500💎 獲得！'),500);
+setTimeout(()=>showToast('🔮 オーブをクリックして召喚しよう！'),3000);
+</script>
+</body>
+</html>
